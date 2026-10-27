@@ -52,7 +52,7 @@ body[data-scene="title"] #menuBtn{display:none}
 .win::after{left:auto;right:-.25em}
 .pad{padding:2.4cqh 2.4cqw}
 .scroll{overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
-.cols{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2cqw}
+.cols{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:2cqw}
 .cols>.win{overflow:auto;touch-action:pan-y}
 .cols.g{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 .row{display:flex;gap:1.2cqw;flex-wrap:wrap;margin-top:1.6cqh}
@@ -104,6 +104,7 @@ small{font-size:.75em;color:var(--dim)}
 .srow{display:flex;justify-content:space-between;align-items:center;gap:1em;width:100%;font:400 .95em var(--display);color:var(--ink);background:rgba(36,27,78,.6);border:1px solid var(--line);border-radius:2px;padding:.45em .8em;cursor:pointer;text-align:left}
 .srow.on{background:linear-gradient(90deg,#4a3aa0,#2e2470);border-color:#a796ff}
 .srow.danger{color:#ffb3c6}
+.srow.hl{border-color:var(--gold);color:var(--moon)}
 .srow[disabled]{opacity:.45;cursor:default}
 .sval{display:flex;align-items:center;gap:.5em}
 .sval i{font-style:normal;color:var(--dim);padding:0 .3em}
@@ -203,7 +204,7 @@ small{font-size:.75em;color:var(--dim)}
 
 /* 좁은 화면 */
 @container (max-width:560px){
-  .cols,.cols.g{grid-template-columns:1fr;overflow:auto}
+  .cols,.cols.g{grid-template-columns:1fr;grid-template-rows:none;overflow:auto;touch-action:pan-y}
   .stats,.kv{grid-template-columns:repeat(2,minmax(0,1fr))}
   .cards{grid-template-columns:repeat(5,minmax(0,1fr));font-size:.8em}
 }

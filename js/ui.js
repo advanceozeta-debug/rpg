@@ -116,11 +116,12 @@ export function hubMenu() {
       <button class="btn nav" data-a="tr">영웅 수련</button>
       <button class="btn nav" data-a="cx">영웅록</button>
       <button class="btn nav" data-a="se">설정</button>
+      <button class="btn nav" data-a="pe">터치 패드 배치 편집</button>
       <button class="btn nav" data-a="ct">조작법</button>
       <button class="btn nav" data-a="ti">타이틀로</button>
     </div>`, {
     go: close, st: () => stages(hubMenu), ga: () => gacha(hubMenu), pa: () => party(hubMenu), tr: () => train(hubMenu), cx: () => codex(hubMenu),
-    se: () => settings(hubMenu), ct: () => controls(hubMenu), ti: () => G.toTitle(),
+    se: () => settings(hubMenu), pe: () => { close(); G.editPad(hubMenu); }, ct: () => controls(hubMenu), ti: () => G.toTitle(),
   }, { cls: 'center', back: close });
 }
 export function battlePause() {
@@ -129,10 +130,11 @@ export function battlePause() {
       <button class="btn nav main" data-a="go" autofocus>계속하기</button>
       <button class="btn nav" data-a="re">처음부터 다시</button>
       <button class="btn nav" data-a="se">설정</button>
+      <button class="btn nav" data-a="pe">터치 패드 배치 편집</button>
       <button class="btn nav" data-a="ct">조작법</button>
       <button class="btn nav" data-a="ex">포기하고 월하정으로</button>
     </div>`, {
-    go: () => { close(); G.resume(); }, re: () => G.restart(), se: () => settings(battlePause), ct: () => controls(battlePause),
+    go: () => { close(); G.resume(); }, re: () => G.restart(), se: () => settings(battlePause), pe: () => { close(); G.editPad(battlePause); }, ct: () => controls(battlePause),
     ex: () => confirmBox('지금 나가면 이번 출정에서 모은 은화를 절반만 가져가요.', '나가기', () => G.abandon(), battlePause),
   }, { cls: 'center', back: () => { close(); G.resume(); } });
 }
@@ -166,8 +168,9 @@ export function settings(backTo) {
   show('settings', head('설정') + `
     <div class="cols">
       <div class="win list">
+        <div class="glabel">터치 패드</div>
+<button class="srow nav hl" data-a="pedit" data-desc="조이스틱과 버튼을 손가락으로 끌어서 원하는 자리에 놓고, 크기도 바꿀 수 있어요."><span>터치 패드 배치 · 크기 편집</span></button>
         <div class="glabel">소리 · 화면 · 조작</div>${rows}
-        <button class="srow nav" data-a="pedit" data-desc="조이스틱과 버튼을 손가락으로 끌어서 원하는 자리에 놓고, 크기도 바꿀 수 있어요."><span>터치 패드 배치 · 크기 편집</span></button>
         <div class="glabel">기록</div>
         <button class="srow nav" data-a="exp" data-desc="다른 기기로 옮기거나 백업할 수 있게 저장 데이터를 글자 코드로 꺼내요." ${G.save ? '' : 'disabled'}><span>저장 데이터 내보내기 / 가져오기</span></button>
         <button class="srow nav" data-a="cpn" data-desc="받은 쿠폰 코드를 입력해 보상을 받아요." ${G.save ? '' : 'disabled'}><span>쿠폰 코드 입력</span></button>

@@ -1,6 +1,6 @@
 // 월하검무 — 게임 데이터 (영웅, 무기, 스킬, 적, 스테이지)
 export const VW = 320, VH = 180, GROUND = 152;
-export const VERSION = 'v0.2.1';
+export const VERSION = 'v0.2.2';
 
 export const RARITY = {
   3: { stars: '★★★', color: '#8fb8ff', name: '★3' },
