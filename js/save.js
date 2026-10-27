@@ -4,8 +4,9 @@ const KEY = 'wolha-save-v1', SKEY = 'wolha-settings-v1';
 export function newSave() {
   return {
     v: 1, moon: 1600, silver: 600,
-    heroes: { ria: { lv: 1, aw: 0 } }, party: ['ria', null],
-    cleared: {}, endlessBest: 0, pulls: 0, pity6: 0, pity5: 0, pity4: 0, kills: 0, coupons: [],
+    heroes: { ria: { lv: 1, aw: 0, lb: 0, tr: 0, sk: { e: 1, q: 1 } } }, party: ['ria', null],
+    cleared: {}, endlessBest: 0, pulls: 0, pity6: 0, pity5: 0, pity4: 0, kills: 0, bossKills: 0, coupons: [],
+    mats: { crystal: 0, tome: 0, shard: 0 }, perm: {}, ach: {},
     created: Date.now(),
   };
 }
@@ -18,6 +19,8 @@ function fix(s) {
   for (const k in d) if (s[k] === undefined) s[k] = d[k];
   if (!s.heroes || !Object.keys(s.heroes).length) s.heroes = d.heroes;
   if (!s.heroes[s.party[0]]) s.party = [Object.keys(s.heroes)[0], null];
+  s.mats = { crystal: 0, tome: 0, shard: 0, ...(s.mats || {}) };
+  for (const k in s.heroes) { const h = s.heroes[k]; h.lb = h.lb || 0; h.tr = h.tr || 0; h.sk = { e: 1, q: 1, ...(h.sk || {}) }; }
   return s;
 }
 export function writeSave(S) { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (e) { return false; } }

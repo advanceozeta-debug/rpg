@@ -1,6 +1,6 @@
 // 월하검무 — 게임 데이터 (영웅, 무기, 스킬, 적, 스테이지)
 export const VW = 320, VH = 180, GROUND = 152;
-export const VERSION = 'v0.3.1';
+export const VERSION = 'v0.4.0';
 
 export const RARITY = {
   3: { stars: '★★★', color: '#8fb8ff', name: '★3' },
@@ -118,15 +118,88 @@ export const HEROES = [
 ];
 export const HERO = Object.fromEntries(HEROES.map(h => [h.id, h]));
 
-export const MAX_LV = 40;
-export function heroStats(def, lv = 1, aw = 0) {
+export const MAX_LV = 40;            // 한계돌파 전 최대 레벨
+export const LB_MAX = 5, TR_MAX = 3, SKILL_MAX = 10;
+export const lvCap = lb => MAX_LV + (lb || 0) * 10;
+export function heroStats(def, lv = 1, aw = 0, tr = 0) {
   const base = { 3: [90, 9], 4: [100, 10], 5: [115, 12], 6: [135, 15] }[def.rarity];
   const w = WEAPONS[def.weapon];
-  const g = 1 + (lv - 1) * .07, a = 1 + aw * .08;
-  return { hp: Math.round(base[0] * w.hpMul * g * a), atk: Math.round(base[1] * w.atkMul * g * a * 10) / 10 };
+  const g = 1 + (lv - 1) * .07, a = 1 + aw * .08, t = 1 + (tr || 0) * .15;
+  return { hp: Math.round(base[0] * w.hpMul * g * a * t), atk: Math.round(base[1] * w.atkMul * g * a * t * 10) / 10 };
 }
-export function power(def, lv, aw) { const s = heroStats(def, lv, aw); return Math.round(s.hp * .5 + s.atk * 10); }
-export function lvCost(lv) { return Math.round(60 * lv * Math.pow(1.08, lv)); }
+export function power(def, lv, aw, tr = 0, sk) {
+  const s = heroStats(def, lv, aw, tr), sb = sk ? 1 + ((sk.e || 1) + (sk.q || 1) - 2) * .02 : 1;
+  return Math.round((s.hp * .5 + s.atk * 10) * sb);
+}
+export const heroPower = (id, o) => power(HERO[id], o.lv, o.aw, o.tr, o.sk);
+export function lvCost(lv) { return Math.round(40 * lv + 3 * lv * lv); }
+// 한계돌파: 레벨 상한 +10, 결정·은화 필요
+export const LB_COST = [{ crystal: 5, silver: 5000 }, { crystal: 10, silver: 15000 }, { crystal: 20, silver: 30000 }, { crystal: 35, silver: 60000 }, { crystal: 50, silver: 100000 }];
+// 초월: 각성 5 이후 능력치 +15%, 별빛 조각·월석 필요
+export const TR_COST = [{ shard: 20, moon: 500 }, { shard: 40, moon: 1000 }, { shard: 80, moon: 2000 }];
+export const TR_COLOR = ['', '#7fe3ff', '#ffd36b', '#ff9be8'];
+export const skillCost = l => ({ tome: l, silver: 400 * l });
+export const MATS = {
+  crystal: { name: '한계의 결정', desc: '한계돌파에 써요. 스테이지 클리어, 무한 회랑, 업적에서 얻어요.' },
+  tome: { name: '비전서', desc: '스킬 강화에 써요. 스테이지 클리어, 무한 회랑, 업적에서 얻어요.' },
+  shard: { name: '별빛 조각', desc: '초월에 써요. 각성 5인 영웅이 다시 소환되면 얻고, 업적에서도 얻어요.' },
+};
+export const DUP_SHARD = { 3: 2, 4: 5, 5: 15, 6: 30 };
+
+// 영구 강화: 계정 전체 영웅에게 적용
+export const PERM = [
+  { k: 'atk', name: '공격 수련', desc: '모든 영웅의 공격력', per: .02, max: 50, base: 250, pct: true },
+  { k: 'hp', name: '체력 수련', desc: '모든 영웅의 최대 HP', per: .02, max: 50, base: 250, pct: true },
+  { k: 'crit', name: '급소 찌르기', desc: '치명타 확률', per: .005, max: 30, base: 450, pct: true, add: .15 },
+  { k: 'critd', name: '일격필살', desc: '치명타 피해', per: .03, max: 30, base: 450, pct: true, add: 1.8, mulx: true },
+  { k: 'cdr', name: '명상', desc: '스킬 쿨타임 감소', per: .01, max: 25, base: 700, pct: true },
+  { k: 'spd', name: '경공', desc: '이동 속도', per: .01, max: 15, base: 600, pct: true },
+  { k: 'gold', name: '재물운', desc: '은화 획득량', per: .03, max: 30, base: 350, pct: true },
+];
+export const permCost = (p, l) => Math.round(p.base * Math.pow(l + 1, 1.55));
+export function permBonus(perm = {}) { const o = {}; for (const p of PERM) o[p.k] = (perm[p.k] || 0) * p.per; return o; }
+
+// 업적
+const A = (id, kind, target, name, reward) => ({ id, kind, target, name, reward });
+export const ACH_KINDS = {
+  kills: '적 처치', boss: '보스 처치', clear: '스테이지 클리어', endless: '무한 회랑 최고 웨이브', pull: '소환 횟수',
+  own: '보유 영웅', lv: '가장 높은 영웅 레벨', lb: '한계돌파 합계', tr: '초월 합계', perm: '영구 강화 합계', skill: '스킬 강화 합계',
+};
+export const ACH = [
+  A('k1', 'kills', 50, '그림자 사냥꾼 I', { moon: 160, silver: 1000 }), A('k2', 'kills', 300, '그림자 사냥꾼 II', { moon: 320, crystal: 3 }),
+  A('k3', 'kills', 1500, '그림자 사냥꾼 III', { moon: 480, crystal: 8 }), A('k4', 'kills', 5000, '그림자 사냥꾼 IV', { moon: 1000, shard: 20 }),
+  A('b1', 'boss', 1, '월식을 넘어 I', { moon: 300, crystal: 3 }), A('b2', 'boss', 5, '월식을 넘어 II', { moon: 500, tome: 5 }), A('b3', 'boss', 20, '월식을 넘어 III', { moon: 1000, shard: 20 }),
+  A('c1', 'clear', 1, '첫 출정', { moon: 160, silver: 500 }), A('c5', 'clear', 5, '달빛 숲길 돌파', { moon: 480, crystal: 5 }), A('c10', 'clear', 10, '안개 낀 폐사 정복', { moon: 1000, crystal: 10, tome: 10 }),
+  A('e5', 'endless', 5, '회랑 순례자 I', { moon: 160, tome: 2 }), A('e10', 'endless', 10, '회랑 순례자 II', { moon: 320, crystal: 5 }),
+  A('e20', 'endless', 20, '회랑 순례자 III', { moon: 640, shard: 10 }), A('e30', 'endless', 30, '끝없는 회랑', { moon: 1200, shard: 25 }),
+  A('p10', 'pull', 10, '첫 소환', { silver: 2000 }), A('p50', 'pull', 50, '소환의 달인 I', { moon: 320, shard: 5 }),
+  A('p100', 'pull', 100, '소환의 달인 II', { moon: 640, shard: 10 }), A('p300', 'pull', 300, '소환의 달인 III', { moon: 1600, shard: 30 }),
+  A('o3', 'own', 3, '동료 셋', { moon: 160 }), A('o6', 'own', 6, '작은 무리', { moon: 320, tome: 3 }), A('o9', 'own', 9, '월하정의 식구', { moon: 640, crystal: 5 }), A('o13', 'own', 13, '모두 모였다', { moon: 2000, shard: 30 }),
+  A('l10', 'lv', 10, '수련의 시작', { silver: 3000 }), A('l20', 'lv', 20, '숙련된 검', { tome: 3, crystal: 2 }), A('l40', 'lv', 40, '한계에 닿다', { crystal: 10, moon: 300 }),
+  A('l60', 'lv', 60, '한계 너머', { crystal: 15, tome: 5 }), A('l90', 'lv', 90, '전설의 경지', { moon: 2000, shard: 30 }),
+  A('lb1', 'lb', 1, '첫 돌파', { moon: 300, tome: 3 }), A('lb5', 'lb', 5, '돌파의 연속', { crystal: 10, moon: 500 }), A('lb15', 'lb', 15, '부서진 한계', { shard: 20, moon: 1000 }),
+  A('t1', 'tr', 1, '첫 초월', { moon: 500, crystal: 10 }), A('t3', 'tr', 3, '별이 되다', { moon: 1500, shard: 20 }),
+  A('m10', 'perm', 10, '단련 I', { silver: 5000 }), A('m50', 'perm', 50, '단련 II', { moon: 500, crystal: 5 }), A('m150', 'perm', 150, '단련 III', { moon: 1500, shard: 20 }),
+  A('s5', 'skill', 5, '비전 입문', { tome: 5 }), A('s20', 'skill', 20, '비전의 대가', { moon: 800, tome: 10 }),
+];
+export function achValue(S, kind) {
+  const hs = Object.values(S.heroes || {});
+  switch (kind) {
+    case 'kills': return S.kills || 0;
+    case 'boss': return S.bossKills || 0;
+    case 'clear': return Object.keys(S.cleared || {}).length;
+    case 'endless': return S.endlessBest || 0;
+    case 'pull': return S.pulls || 0;
+    case 'own': return hs.length;
+    case 'lv': return hs.reduce((a, h) => Math.max(a, h.lv), 0);
+    case 'lb': return hs.reduce((a, h) => a + (h.lb || 0), 0);
+    case 'tr': return hs.reduce((a, h) => a + (h.tr || 0), 0);
+    case 'perm': return Object.values(S.perm || {}).reduce((a, v) => a + v, 0);
+    case 'skill': return hs.reduce((a, h) => a + ((h.sk?.e || 1) - 1) + ((h.sk?.q || 1) - 1), 0);
+  }
+  return 0;
+}
+export const achClaimable = S => S ? ACH.filter(a => !(S.ach || {})[a.id] && achValue(S, a.kind) >= a.target).length : 0;
 
 // 뽑기 확률
 export const GACHA = { cost1: 160, cost10: 1600, p6: .004, p5: .012, p4: .13, pity6: 160, pity5: 70, pity4: 10 };

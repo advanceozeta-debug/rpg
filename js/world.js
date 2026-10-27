@@ -1,5 +1,5 @@
 // 월하검무 — 전투·이동 엔진 (거점과 스테이지가 함께 씀)
-import { VW, VH, GROUND, HERO, WEAPONS, SKILLS, ENEMIES, heroStats, endlessWave, endlessScale } from './data.js';
+import { VW, VH, GROUND, HERO, WEAPONS, SKILLS, ENEMIES, heroStats, endlessWave, endlessScale, permBonus } from './data.js';
 import * as Art from './art.js';
 import { sfx } from './audio.js';
 
@@ -8,9 +8,10 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const hit = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
 export const FONT = { d: '"Do Hyeon","Apple SD Gothic Neo","Malgun Gothic",sans-serif', b: '"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif', p: '"Silkscreen",ui-monospace,monospace' };
 
-function makeHero(entry) {
-  const def = HERO[entry.id], st = heroStats(def, entry.lv, entry.aw);
-  return { id: def.id, def, lv: entry.lv, aw: entry.aw, maxHp: st.hp, hp: st.hp, hpLag: st.hp, atk: st.atk,
+function makeHero(entry, pb) {
+  const def = HERO[entry.id], st = heroStats(def, entry.lv, entry.aw, entry.tr);
+  const hp = Math.round(st.hp * (1 + pb.hp)), atk = Math.round(st.atk * (1 + pb.atk) * 10) / 10;
+  return { id: def.id, def, lv: entry.lv, aw: entry.aw, tr: entry.tr || 0, skE: entry.sk?.e || 1, skQ: entry.sk?.q || 1, maxHp: hp, hp, hpLag: hp, atk,
     x: 0, y: GROUND, vx: 0, vy: 0, face: 1, onGround: true, state: 'idle', anim: 0,
     combo: 0, atkT: 0, atkDur: 0, step: null, hitDone: true, atkBuf: 0, jumpBuf: 0, lastAtk: -9,
     dashT: 0, dashCD: 0, dashSpeed: 270, dashHit: null, airDash: true, hurtT: 0, inv: 0, jumps: 0,
@@ -24,15 +25,17 @@ export class World {
     this.cam = 0; this.t = 0; this.hitstop = 0; this.shake = 0; this.sx = 0; this.sy = 0;
     this.enemies = []; this.shots = []; this.parts = []; this.nums = []; this.drops = []; this.fx = []; this.ghosts = []; this.delayed = [];
     this.banner = null; this.wave = 0; this.spawnQ = []; this.spawnT = 0; this.waveState = 'intro'; this.waveT = 1.3;
-    this.run = { silver: 0, moon: 0, kills: 0, time: 0, wave: 0 }; this.done = false; this.deathT = 0;
+    this.run = { silver: 0, moon: 0, kills: 0, bossKills: 0, time: 0, wave: 0 }; this.done = false; this.deathT = 0;
     this.endless = !!o.endless; this.waves = o.waves || []; this.scale = this.stage ? this.stage.scale : 1;
-    this.party = o.party.filter(Boolean).map(makeHero); this.active = 0; this.tagCD = 0;
+    const pb = this.pb = permBonus(o.perm || {});
+    this.critRate = .15 + pb.crit; this.critMul = 1.8 + pb.critd; this.cdr = pb.cdr; this.spd = pb.spd;
+    this.party = o.party.filter(Boolean).map(e => makeHero(e, pb)); this.active = 0; this.tagCD = 0;
     this.stations = o.stations || []; this.near = null;
     const h = this.hero; h.x = o.startX ?? 60; h.face = 1;
     this.cam = clamp(h.x - VW / 2, 0, this.width - VW);
     this.petals = Array.from({ length: 18 }, () => ({ x: rnd() * VW, y: rnd() * VH, v: 8 + rnd() * 10, s: rnd() * 6, c: rnd() < .6 ? '#ffb3cf' : '#fff1f7' }));
     this.dps = { log: [], total: 0 };
-    if (this.mode === 'hub') { this.enemies.push(this.makeEnemy('dummy', 770, 1)); this.waveState = 'none'; }
+    if (this.mode === 'hub') { this.enemies.push(this.makeEnemy('dummy', 805, 1)); this.waveState = 'none'; }
   }
   get hero() { return this.party[this.active]; }
   get dev() { return this.settings.dev ? (this.settings.devOpts || {}) : {}; }
@@ -74,7 +77,7 @@ export class World {
   dmgOf(h, mul) { return h.atk * mul * (h.buffT > 0 ? 1.4 : 1); }
   damage(e, base, dir, o = {}) {
     if (e.dead) return;
-    const crit = rnd() < .15; let d = Math.max(1, Math.round(base * (crit ? 1.8 : 1) * (.9 + rnd() * .2)));
+    const crit = rnd() < this.critRate; let d = Math.max(1, Math.round(base * (crit ? this.critMul : 1) * (.9 + rnd() * .2)));
     if (this.dev.onehit && e.type !== 'dummy') d = Math.max(d, Math.ceil(e.hp));
     e.hp -= d; e.flash = .1;
     this.num(e.x + (rnd() - .5) * 6, e.y - e.h - 2, d, crit ? '#ffe08a' : '#ffffff', crit);
@@ -91,7 +94,7 @@ export class World {
   }
   kill(e) {
     e.dead = true; this.run.kills++;
-    const boss = e.d.boss;
+    const boss = e.d.boss; if (boss) this.run.bossKills++;
     this.burst(e.x, e.y - e.h / 2, boss ? 50 : e.d.elite ? 30 : 16,
       e.type === 'wisp' ? ['#8f73ff', '#ece6ff', '#b9a6ff'] : boss ? ['#ffd36b', '#8f73ff', '#2b2050', '#ffffff'] : e.type === 'knight' ? ['#ff4d6d', '#524a78', '#ffe3a3'] : ['#5fd3b4', '#b8f5e4', '#b48cff'], 130, 160, .7);
     const n = Math.max(1, Math.round(e.d.silver * Math.sqrt(this.scale) / 4));
@@ -127,10 +130,12 @@ export class World {
   /* ---------- 스킬 ---------- */
   cast(h, slot, dir) {
     const type = slot === 'e' ? h.def.e : h.def.q, S = SKILLS[type];
-    if (slot === 'e') h.cdE = S.cd; else h.cdQ = S.cd;
+    if (slot === 'e') h.cdE = S.cd * (1 - this.cdr); else h.cdQ = S.cd * (1 - this.cdr);
     if (dir) h.face = dir;
     h.skillT = .3; h.atkT = 0; sfx('skill');
-    const acc = h.def.pal.acc, f = h.face, dmg = this.dmgOf(h, S.mul);
+    const M = S.mul * (1 + ((slot === 'e' ? h.skE : h.skQ) - 1) * .1);
+    const acc = h.def.pal.acc, f = h.face, dmg = this.dmgOf(h, M);
+    h.spinMul = M;
     switch (type) {
       case 'wave': this.shots.push({ team: 1, kind: 'wave', x: h.x + f * 10, y: h.y - 20, vx: f * 240, vy: 0, life: .9, dmg, pierce: true, hits: new Set(), w: 6, h: 10, col: acc, heavy: true }); break;
       case 'crescent3': h.skillT = .4; for (let i = 0; i < 3; i++) this.later(i * .13, () => { this.shots.push({ team: 1, kind: 'wave', big: true, x: h.x + h.face * 12, y: h.y - 21, vx: h.face * 290, vy: 0, life: 1, dmg, pierce: true, hits: new Set(), w: 9, h: 15, col: acc, heavy: true }); this.addShake(1.5); sfx('skill'); }); break;
@@ -141,12 +146,12 @@ export class World {
       case 'nova': {
         const nx = h.x + f * 26, ny = h.y - 22; h.skillT = .45;
         this.fx.push({ kind: 'charge', x: nx, y: ny, life: .35, max: .35, col: acc });
-        this.later(.35, () => { this.fx.push({ kind: 'ring', x: nx, y: ny, r0: 6, r1: 50, life: .35, max: .35, col: acc }); this.burst(nx, ny, 26, [acc, '#ffffff', '#ffe3a3'], 160, 60, .5); if (this.aoe(h, nx, ny, 48, S.mul, { heavy: true })) this.hitstop = .1; this.addShake(5); sfx('boom'); });
+        this.later(.35, () => { this.fx.push({ kind: 'ring', x: nx, y: ny, r0: 6, r1: 50, life: .35, max: .35, col: acc }); this.burst(nx, ny, 26, [acc, '#ffffff', '#ffe3a3'], 160, 60, .5); if (this.aoe(h, nx, ny, 48, M, { heavy: true })) this.hitstop = .1; this.addShake(5); sfx('boom'); });
         break;
       }
       case 'rain': for (let i = 0; i < 10; i++) this.later(i * .07, () => { this.shots.push({ team: 1, kind: h.def.weapon === 'bow' ? 'fallarrow' : 'fallblade', x: h.x + f * (24 + rnd() * 96), y: h.y - 90, vx: f * 30, vy: 360, life: .6, dmg, w: 4, h: 6, col: acc }); sfx('shoot'); }); break;
       case 'heal': for (const p of this.party) if (!p.dead) { const v = Math.round(p.maxHp * .25); p.hp = Math.min(p.maxHp, p.hp + v); if (p === h) this.num(h.x, h.y - 46, '+' + v, '#7dffb4', false); }
-        this.fx.push({ kind: 'ring', x: h.x, y: h.y - 20, r0: 4, r1: 34, life: .4, max: .4, col: '#7dffb4' }); this.burst(h.x, h.y - 20, 18, ['#ffb3cf', '#7dffb4', '#ffffff'], 70, -40, .8); this.aoe(h, h.x, h.y - 20, 34, S.mul); sfx('heal'); break;
+        this.fx.push({ kind: 'ring', x: h.x, y: h.y - 20, r0: 4, r1: 34, life: .4, max: .4, col: '#7dffb4' }); this.burst(h.x, h.y - 20, 18, ['#ffb3cf', '#7dffb4', '#ffffff'], 70, -40, .8); this.aoe(h, h.x, h.y - 20, 34, M); sfx('heal'); break;
       case 'buff': h.buffT = 7; this.fx.push({ kind: 'ring', x: h.x, y: h.y - 20, r0: 20, r1: 4, life: .4, max: .4, col: '#ffd36b' }); this.burst(h.x, h.y - 10, 16, ['#ffd36b', '#ffffff'], 60, -80, .7); break;
       case 'uppercut': {
         const bx = [f > 0 ? h.x : h.x - 30, h.y - 46, f > 0 ? h.x + 30 : h.x, h.y + 2]; let any = 0;
@@ -230,12 +235,12 @@ export class World {
     if (I.pressed.jump) h.jumpBuf = .12;
     if (I.pressed.tag) { if (this.trySwap()) return; }
     const dir = (I.held.right ? 1 : 0) - (I.held.left ? 1 : 0);
-    const speed = h.buffT > 0 ? 118 : 96;
+    const speed = (h.buffT > 0 ? 118 : 96) * (1 + this.spd);
     if (h.atkT > 0) { h.atkT -= dt; if (h.atkT <= 0) h.lastAtk = this.t; }
     if (h.skillT > 0) h.skillT -= dt;
     if (h.spinT > 0) {
       h.spinT -= dt; h.spinTick -= dt;
-      if (h.spinTick <= 0) { h.spinTick = .12; this.aoe(h, h.x, h.y - 20, 28, SKILLS.spin.mul, { kb: 70 }); this.fx.push({ kind: 'ring', x: h.x, y: h.y - 20, r0: 26, r1: 28, life: .1, max: .1, col: h.def.pal.acc }); sfx('swing'); }
+      if (h.spinTick <= 0) { h.spinTick = .12; this.aoe(h, h.x, h.y - 20, 28, h.spinMul || SKILLS.spin.mul, { kb: 70 }); this.fx.push({ kind: 'ring', x: h.x, y: h.y - 20, r0: 26, r1: 28, life: .1, max: .1, col: h.def.pal.acc }); sfx('swing'); }
     }
     if (h.hurtT > 0) h.hurtT -= dt;
     else if (h.dashT > 0) {
@@ -285,6 +290,7 @@ export class World {
     else if (h.jumps === 0) h.jumps = 1;
     const st = h.hurtT > 0 ? 'hurt' : h.dashT > 0 ? 'dash' : h.spinT > 0 ? 'spin' : h.skillT > 0 ? 'skill' : h.atkT > 0 ? 'attack' : !h.onGround ? (h.vy < 0 ? 'jump' : 'fall') : Math.abs(h.vx) > 12 ? 'run' : 'idle';
     if (h.def.rarity >= 6 && rnd() < .2) this.parts.push({ x: h.x + (rnd() - .5) * 18 - h.face * 8, y: h.y - 4 - rnd() * 38, vx: 0, vy: -12, g: 0, life: .5, max: .5, col: rnd() < .5 ? h.def.pal.acc : '#ece6ff', sz: 1 });
+    if (h.tr > 0 && rnd() < .12 + h.tr * .06) { const a = this.t * 3 + rnd() * 6.28; this.parts.push({ x: h.x + Math.cos(a) * 11, y: h.y - 2 - rnd() * 6, vx: 0, vy: -18 - h.tr * 6, g: 0, life: .6, max: .6, col: ['', '#7fe3ff', '#ffd36b', '#ff9be8'][h.tr], sz: rnd() < .3 ? 2 : 1 }); }
     if (st !== h.state) { h.state = st; h.anim = 0; }
     h.anim += dt;
   }
@@ -577,7 +583,7 @@ export class World {
       if (near) { Hc.fillStyle = '#ffd36b'; Hc.fillRect(x - w / 2, y + 1.6, w, .6); }
       txt(Hc, label, x, y - 8.5, { size: near ? 8 : 7, col: near ? '#ffe3a3' : '#ece8ff', align: 'center', font: 'd', shadow: false });
       if (near) txt(Hc, s.sub, x, y + 4, { size: 5.5, col: '#c9c2ee', align: 'center', font: 'b' });
-      if (s.badge && this.badge) { Hc.fillStyle = '#ff6b9a'; Hc.beginPath(); Hc.arc(x + w / 2 - 1, y - 10, 2.4, 0, 6.29); Hc.fill(); }
+      if (this.badges && this.badges[s.id]) { Hc.fillStyle = '#ff6b9a'; Hc.beginPath(); Hc.arc(x + w / 2 - 1, y - 10, 2.4, 0, 6.29); Hc.fill(); }
     }
     // 허수아비 DPS
     const d = this.enemies.find(e => e.type === 'dummy');

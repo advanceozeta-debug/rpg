@@ -349,6 +349,9 @@ export function coinIcon(kind) {
   const key = 'coin' + kind; if (imgCache[key]) return imgCache[key];
   const k = mk(10, 10), p = c; c = k.getContext('2d');
   if (kind === 'moon') { R(3, 0, 4, 1, '#bff0ff'); R(2, 1, 6, 2, '#7fe3ff'); R(1, 3, 8, 3, '#5fb8e8'); R(2, 6, 6, 2, '#3f86c8'); R(3, 8, 4, 1, '#2d5f9e'); R(3, 2, 2, 2, '#ffffff'); R(6, 4, 1, 2, '#bff0ff'); }
+  else if (kind === 'crystal') { R(4, 0, 2, 1, '#ffd0b0'); R(3, 1, 4, 2, '#ff9a6a'); R(2, 3, 6, 3, '#ff6a4a'); R(3, 6, 4, 2, '#d03a3a'); R(4, 8, 2, 2, '#8a2030'); R(4, 1, 1, 4, '#ffffff'); R(6, 3, 1, 2, '#ffc0a0'); }
+  else if (kind === 'tome') { R(1, 1, 8, 8, '#5a2a6a'); R(2, 1, 7, 7, '#8a4aa0'); R(2, 8, 7, 1, '#efe6cf'); R(1, 1, 1, 8, '#3a1a4a'); R(4, 3, 3, 3, '#ffd36b'); R(5, 4, 1, 1, '#8a4aa0'); R(3, 1, 1, 7, '#a86ac0'); }
+  else if (kind === 'shard') { R(4, 0, 2, 3, '#fff2c9'); R(0, 3, 10, 2, '#ffd36b'); R(2, 5, 6, 2, '#ffd36b'); R(1, 7, 3, 2, '#e9a83a'); R(6, 7, 3, 2, '#e9a83a'); R(4, 3, 2, 3, '#ffffff'); R(3, 2, 1, 1, '#ff9be8'); R(7, 1, 1, 1, '#7fe3ff'); }
   else { R(2, 1, 6, 8, '#c9cfe6'); R(1, 2, 8, 6, '#c9cfe6'); R(2, 2, 6, 6, '#e8ecf9'); R(3, 3, 4, 4, '#aab2d0'); R(4, 4, 2, 2, '#e8ecf9'); R(2, 1, 2, 1, '#ffffff'); }
   c = p;
   return imgCache[key] = k;
@@ -447,12 +450,13 @@ export function buildBattleBg(theme) {
 // 거점 월하정
 export const HUB_W = 960;
 export const STATIONS = [
-  { id: 'stele', x: 70, name: '기록 비석', sub: '나의 기록' },
-  { id: 'codex', x: 180, name: '영웅록', sub: '영웅 도감' },
-  { id: 'party', x: 310, name: '편성', sub: '출전·교대 영웅' },
-  { id: 'altar', x: 480, name: '소환 제단', sub: '월석으로 영웅 소환', badge: true },
-  { id: 'train', x: 630, name: '영웅 수련', sub: '은화로 레벨 올리기' },
-  { id: 'gate', x: 900, name: '출정의 문', sub: '스테이지·무한 회랑' },
+  { id: 'stele', x: 60, name: '업적 비석', sub: '업적 보상 · 기록' },
+  { id: 'codex', x: 165, name: '영웅록', sub: '영웅 도감' },
+  { id: 'party', x: 290, name: '편성', sub: '출전·교대 영웅' },
+  { id: 'altar', x: 450, name: '소환 제단', sub: '월석으로 영웅 소환' },
+  { id: 'grow', x: 600, name: '영웅 육성', sub: '레벨 · 한계돌파 · 초월 · 스킬' },
+  { id: 'forge', x: 705, name: '영구 강화', sub: '모든 영웅 능력치 강화' },
+  { id: 'gate', x: 905, name: '출정의 문', sub: '스테이지·무한 회랑' },
 ];
 export function buildHubBg() {
   const T = { ...THEMES.forest, moonX: 250 }, r = mulberry(99), stars = [];
@@ -486,7 +490,7 @@ export function buildHubBg() {
     for (let k = 0; k < 18; k++) { R(px + 14 + k, 24 + Math.round(Math.sin(k / 18 * Math.PI) * 5), 1, 1, '#341820'); R(px + 6 - k, 24 + Math.round(Math.sin(k / 18 * Math.PI) * 5), 1, 1, '#341820'); }
   }
   // 벚나무 (제단 뒤)
-  const tx = 540;
+  const tx = 520;
   for (let k = 0; k < 60; k++) { R(tx + Math.round(Math.sin(k * .1) * 2), GROUND - k, 4 - (k > 40 ? 1 : 0), 1, '#3a2228'); }
   for (let k = 0; k < 28; k++) R(tx + 2 + k, GROUND - 46 - Math.round(k * .5), 2, 1, '#3a2228');
   for (let k = 0; k < 22; k++) R(tx - k, GROUND - 40 - Math.round(k * .6), 2, 1, '#3a2228');
@@ -507,7 +511,7 @@ export function buildHubBg() {
         R(X - 4 + sw, 33, 9, 1, '#3a1620'); R(X - 4 + sw, 46, 9, 1, '#3a1620'); R(X + sw, 47, 1, 3, '#ff8a3a');
       }
       // 소환 제단 크리스털
-      const ax = Math.round(480 - cam), ay = GROUND - 44 + Math.round(Math.sin(t * 2) * 2);
+      const ax = Math.round(450 - cam), ay = GROUND - 44 + Math.round(Math.sin(t * 2) * 2);
       if (ax > -40 && ax < VW + 40) {
         L.globalAlpha = .25 + Math.sin(t * 3) * .08; R(ax - 10, ay - 10, 21, 22, '#7fe3ff'); L.globalAlpha = .12; R(ax - 16, ay - 16, 33, 34, '#7fe3ff'); L.globalAlpha = 1;
         R(ax - 1, ay - 9, 3, 1, '#ffffff'); R(ax - 2, ay - 8, 5, 2, '#bff0ff'); R(ax - 3, ay - 6, 7, 6, '#7fe3ff'); R(ax - 2, ay, 5, 3, '#4fb8e8'); R(ax - 1, ay + 3, 3, 2, '#2f86c8'); R(ax, ay + 5, 1, 1, '#2f86c8');
@@ -515,7 +519,7 @@ export function buildHubBg() {
         for (let i = 0; i < 3; i++) { const a = t * 1.5 + i * 2.09; R(ax + Math.round(Math.cos(a) * 12), ay + Math.round(Math.sin(a) * 4), 1, 1, '#ffe3a3'); }
       }
       // 출정의 문 소용돌이
-      const gx = Math.round(900 - cam), gy = GROUND - 26;
+      const gx = Math.round(905 - cam), gy = GROUND - 26;
       if (gx > -40 && gx < VW + 40) {
         for (let i = 0; i < 70; i++) { const a = t * 2 + i * .5, d = (i % 14) + 2; R(gx + Math.round(Math.cos(a + d * .3) * d), gy + Math.round(Math.sin(a + d * .3) * d * 1.3), 1, 1, i % 3 ? '#8f73ff' : '#d4c6ff'); }
         R(gx - 1, gy - 1, 3, 3, '#ffffff');
@@ -546,12 +550,16 @@ function prop(s) {
     R(X - 18, G - 6, 36, 1, '#5e5a80'); R(X - 14, G - 12, 28, 1, '#5e5a80'); R(X - 12, G - 26, 24, 2, '#c9a24a');
     R(X - 6, G - 21, 12, 7, '#36334c'); for (let k = 0; k < 3; k++) R(X - 4, G - 20 + k * 2, 8, 1, '#7fe3ff');
     for (const cx of [-15, 13]) { R(X + cx, G - 18, 2, 6, '#efe6cf'); R(X + cx, G - 20, 1, 2, '#ffcf7a'); }
-  } else if (s.id === 'train') {
+  } else if (s.id === 'grow') {
     R(X - 16, G - 34, 2, 34, '#6b4a2a'); R(X + 14, G - 34, 2, 34, '#6b4a2a'); R(X - 18, G - 36, 36, 3, '#7a5532'); R(X - 18, G - 14, 36, 2, '#5a3a22');
     for (let k = 0; k < 18; k++) R(X - 10, G - 32 + k, 1, 1, k < 14 ? '#cfd6ee' : '#6a4a2a');
     R(X - 12, G - 18, 5, 1, '#c9a24a');
     for (let k = 0; k < 26; k++) R(X - 2, G - 34 + k, 1, 1, '#7a5532'); R(X - 3, G - 36, 3, 4, '#e4f0ff');
     for (let i = -10; i <= 10; i++) { const t = i / 10; R(X + 8 + Math.round((1 - t * t) * 3), G - 22 + i, 1, 1, '#8a5a3a'); } R(X + 8, G - 32, 1, 21, '#e8e2ff');
+  } else if (s.id === 'forge') {
+    R(X - 20, G - 30, 14, 30, '#3a3348'); R(X - 20, G - 30, 14, 2, '#5e5a80'); R(X - 18, G - 22, 10, 10, '#1a1020'); R(X - 17, G - 18, 8, 6, '#ff8a3a'); R(X - 15, G - 17, 4, 4, '#ffd27a'); R(X - 17, G - 36, 6, 6, '#2a2440');
+    R(X - 2, G - 4, 18, 4, '#2a2440'); R(X + 2, G - 12, 10, 8, '#3a3a4e'); R(X - 4, G - 16, 22, 4, '#5a5a70'); R(X - 4, G - 16, 22, 1, '#8a8aa0'); R(X - 7, G - 15, 4, 2, '#5a5a70');
+    for (let k = 0; k < 8; k++) R(X + 10 + k, G - 22 + Math.round(k * .4), 1, 1, '#7a5532'); R(X + 16, G - 24, 4, 4, '#6a6a80');
   } else if (s.id === 'gate') {
     for (let a = 0; a < 6.283; a += .02) {
       for (let rr = 20; rr <= 24; rr++) { const px = X + Math.round(Math.cos(a) * rr), py = G - 26 + Math.round(Math.sin(a) * rr * 1.25); if (py < G) R(px, py, 1, 1, rr === 20 ? '#2a2148' : rr === 24 ? '#5e5a80' : '#4a4766'); }

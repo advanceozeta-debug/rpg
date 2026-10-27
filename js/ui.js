@@ -1,5 +1,5 @@
 // 메뉴 화면들
-import { HEROES, HERO, RARITY, WEAPONS, SKILLS, CHAPTERS, STAGE, STAGES, ENEMIES, GACHA, MAX_LV, VERSION, COUPONS, heroStats, power, lvCost } from './data.js';
+import { HEROES, HERO, RARITY, WEAPONS, SKILLS, CHAPTERS, STAGE, STAGES, ENEMIES, GACHA, MAX_LV, VERSION, COUPONS, heroStats, power, heroPower, lvCost, lvCap, LB_MAX, TR_MAX, SKILL_MAX, LB_COST, TR_COST, TR_COLOR, skillCost, MATS, DUP_SHARD, PERM, permCost, permBonus, ACH, ACH_KINDS, achValue, achClaimable } from './data.js';
 import * as Art from './art.js';
 import { sfx } from './audio.js';
 import { exportCode, importCode } from './save.js';
@@ -7,7 +7,12 @@ import { exportCode, importCode } from './save.js';
 let root, G, cur = null, verTaps = 0;
 const esc = s => String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const fmt = n => Math.round(n).toLocaleString();
-const coin = k => `<img class="coin" src="${Art.coinURL(k)}" alt="${k === 'moon' ? '월석' : '은화'}">`;
+const CN = { moon: '월석', silver: '은화', crystal: '한계의 결정', tome: '비전서', shard: '별빛 조각' };
+const coin = k => `<img class="coin" src="${Art.coinURL(k)}" alt="${CN[k]}" title="${CN[k]}">`;
+const have = k => k === 'moon' || k === 'silver' ? G.save[k] : G.save.mats[k];
+const pills = keys => keys.map(k => `<span class="pill">${coin(k)}${fmt(have(k))}</span>`).join('');
+const newEntry = () => ({ lv: 1, aw: 0, lb: 0, tr: 0, sk: { e: 1, q: 1 } });
+const trMark = tr => tr ? `<span class="trm" style="color:${TR_COLOR[tr]}">${'◆'.repeat(tr)}</span>` : '';
 const stars = r => `<span class="stars r${r}">${RARITY[r].stars}</span>`;
 const sprite = (id, cls = '') => `<img class="spr ${cls}" src="${Art.heroURL(id, 'full')}" alt="">`;
 const face = id => `<img class="face" src="${Art.heroURL(id, 'face')}" alt="">`;
@@ -101,7 +106,7 @@ export function title() {
         if (!has) { sfx('ok'); G.newGame(); return; }
         confirmBox('저장된 기록을 지우고 처음부터 시작할까요?<br><small>지운 기록은 되돌릴 수 없어요. 설정에서 먼저 내보내기를 해 두면 안전해요.</small>', '지우고 시작', () => { sfx('ok'); G.newGame(); }, title);
       },
-      rec: () => records(title), set: () => settings(title), ctl: () => controls(title),
+      rec: () => achievements(title, 1), set: () => settings(title), ctl: () => controls(title),
       ver: () => { verTaps++; if (verTaps >= 5) { verTaps = 0; if (!G.settings.dev) { G.settings.dev = true; G.applySettings(); toast('개발자 모드가 켜졌어요.'); sfx('level'); } devPanel(title); } else if (verTaps >= 3) toast(`개발자 모드까지 ${5 - verTaps}번`); },
     }, { cls: 'title' });
 }
@@ -114,7 +119,9 @@ export function hubMenu() {
       <button class="btn nav" data-a="st">출정의 문</button>
       <button class="btn nav" data-a="ga">소환 제단</button>
       <button class="btn nav" data-a="pa">편성</button>
-      <button class="btn nav" data-a="tr">영웅 수련</button>
+      <button class="btn nav" data-a="tr">영웅 육성</button>
+      <button class="btn nav" data-a="fg">영구 강화</button>
+      <button class="btn nav" data-a="ac">업적</button>
       <button class="btn nav" data-a="cx">영웅록</button>
       <button class="btn nav" data-a="se">설정</button>
       <button class="btn nav" data-a="pe">터치 패드 배치 편집</button>
@@ -123,7 +130,7 @@ export function hubMenu() {
       <button class="btn nav" data-a="ti">타이틀로</button>
     </div>`, {
     dv: () => devPanel(hubMenu),
-    go: close, st: () => stages(hubMenu), ga: () => gacha(hubMenu), pa: () => party(hubMenu), tr: () => train(hubMenu), cx: () => codex(hubMenu),
+    go: close, st: () => stages(hubMenu), ga: () => gacha(hubMenu), pa: () => party(hubMenu), tr: () => grow(hubMenu), fg: () => forge(hubMenu), ac: () => achievements(hubMenu), cx: () => codex(hubMenu),
     se: () => settings(hubMenu), pe: () => { close(); G.editPad(hubMenu); }, ct: () => controls(hubMenu), ti: () => G.toTitle(),
   }, { cls: 'center', back: close });
 }
@@ -255,24 +262,6 @@ export function controls(backTo, tab = 0) {
     { back: () => backTo(), keys: k => { if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'KeyA' || k === 'KeyD') { controls(backTo, tab ? 0 : 1); return true; } } });
 }
 
-/* ---------------- 기록 ---------------- */
-export function records(backTo) {
-  const S = G.save, own = Object.keys(S.heroes).length, cl = Object.keys(S.cleared).length;
-  const days = Math.max(1, Math.ceil((Date.now() - S.created) / 864e5));
-  show('records', head('기록 비석') + `
-    <div class="win pad">
-      <dl class="stats">
-        <div><dt>클리어한 스테이지</dt><dd>${cl} <small>/ ${STAGES.length}</small></dd></div>
-        <div><dt>무한 회랑 최고</dt><dd>${S.endlessBest} <small>웨이브</small></dd></div>
-        <div><dt>보유 영웅</dt><dd>${own} <small>/ ${HEROES.length}</small></dd></div>
-        <div><dt>처치한 적</dt><dd>${fmt(S.kills)}</dd></div>
-        <div><dt>소환 횟수</dt><dd>${fmt(S.pulls)}</dd></div>
-        <div><dt>함께한 날</dt><dd>${days} <small>일째</small></dd></div>
-      </dl>
-      <p class="note">기록은 이 기기 브라우저에 저장돼요. 친구와 겨루는 온라인 랭킹은 다음 업데이트에서 준비 중이에요.</p>
-    </div>`, { back: () => backTo() }, { back: () => backTo() });
-}
-
 /* ---------------- 소환 제단 ---------------- */
 export function gacha(backTo) {
   const S = G.save, f5 = HEROES.filter(h => h.rarity === 5), feat = [...f5.slice(0, 2), ...HEROES.filter(h => h.rarity >= 6), ...f5.slice(2)];
@@ -291,7 +280,7 @@ export function gacha(backTo) {
         <button class="btn nav" data-a="one" ${S.moon < GACHA.cost1 ? 'disabled' : ''}><span>1회 소환</span><span class="cost">${coin('moon')}${GACHA.cost1}</span></button>
         <button class="btn nav main" data-a="ten" ${S.moon < GACHA.cost10 ? 'disabled' : ''} autofocus><span>10회 소환</span><span class="cost">${coin('moon')}${GACHA.cost10}</span></button>
         <button class="btn nav" data-a="list">등장 목록</button>
-        <p class="note">${S.moon < GACHA.cost1 ? '월석이 부족해요. 스테이지를 처음 클리어하거나 무한 회랑 5웨이브마다 월석을 받아요.' : '이미 가진 영웅이 다시 나오면 각성해서 더 강해져요 (최대 5단계).'}</p>
+        <p class="note">${S.moon < GACHA.cost1 ? '월석이 부족해요. 스테이지를 처음 클리어하거나 무한 회랑 5웨이브마다 월석을 받아요.' : '이미 가진 영웅이 다시 나오면 각성해서 더 강해져요 (최대 5단계). 각성 5 이후로는 초월에 쓰는 별빛 조각을 받아요.'}</p>
       </div>
     </div>`, {
     back: () => backTo(), one: () => doPull(1, backTo), ten: () => doPull(10, backTo), list: () => rates(() => gacha(backTo)),
@@ -311,7 +300,7 @@ function doPull(n, backTo) {
   show('gachaRes', `<div class="gres ${best === 6 ? 'rainbow' : best === 5 ? 'gold' : best === 4 ? 'violet' : ''}">
       <div class="cards n${n}">${res.map((r, i) => `<div class="gcard r${r.r}" style="--d:${i * (n === 10 ? 90 : 0) + 250}ms">
         ${sprite(r.id)}<b>${HERO[r.id].name}</b>${stars(r.r)}
-        <span class="gtag ${r.res}">${r.res === 'new' ? 'NEW' : r.res === 'aw' ? '각성 ' + r.aw : '은화 +' + r.silver}</span></div>`).join('')}</div>
+        <span class="gtag ${r.res}">${r.res === 'new' ? 'NEW' : r.res === 'aw' ? '각성 ' + r.aw : '별빛 +' + r.shard}</span></div>`).join('')}</div>
       <div class="row">
         <button class="btn nav" data-a="again" ${S.moon < cost ? 'disabled' : ''}>${n}회 더 <span class="cost">${coin('moon')}${cost}</span></button>
         <button class="btn nav main" data-a="ok" autofocus>확인</button>
@@ -327,9 +316,9 @@ function pullOne(S) {
   if (r === 6) { S.pity6 = 0; S.pity5 = 0; S.pity4 = 0; } else if (r === 5) { S.pity5 = 0; S.pity4 = 0; } else if (r === 4) S.pity4 = 0;
   const pool = HEROES.filter(h => h.rarity === r), def = pool[Math.random() * pool.length | 0];
   const own = S.heroes[def.id];
-  if (!own) { S.heroes[def.id] = { lv: 1, aw: 0 }; return { id: def.id, r, res: 'new' }; }
+  if (!own) { S.heroes[def.id] = newEntry(); return { id: def.id, r, res: 'new' }; }
   if (own.aw < 5) { own.aw++; return { id: def.id, r, res: 'aw', aw: own.aw }; }
-  const v = { 3: 100, 4: 300, 5: 1000, 6: 2000 }[r]; S.silver += v; return { id: def.id, r, res: 'silver', silver: v };
+  const v = DUP_SHARD[r]; S.mats.shard += v; return { id: def.id, r, res: 'shard', shard: v };
 }
 function rates(backTo) {
   const grp = [6, 5, 4, 3].map(r => {
@@ -351,22 +340,22 @@ export function codex(backTo, sel) {
     { back: () => backTo(), pick: id => { sfx('ui'); heroDetail(id, () => codex(backTo)); } }, { back: () => backTo() });
 }
 export function heroDetail(id, backTo) {
-  const S = G.save, h = HERO[id], o = S.heroes[id], lv = o ? o.lv : 1, aw = o ? o.aw : 0, st = heroStats(h, lv, aw);
-  const sk = (t, nm, key) => `<div class="skill"><img src="${Art.skillURL(t, h.pal.acc)}" alt=""><div><b>${key} · ${nm}</b><span>쿨타임 ${SKILLS[t].cd}초</span><p>${SKILLS[t].desc}</p></div></div>`;
+  const S = G.save, h = HERO[id], o = S.heroes[id], lv = o ? o.lv : 1, aw = o ? o.aw : 0, tr = o ? o.tr : 0, st = heroStats(h, lv, aw, tr);
+  const sk = (t, nm, key) => `<div class="skill"><img src="${Art.skillURL(t, h.pal.acc)}" alt=""><div><b>${key} · ${nm}${o ? ' Lv.' + o.sk[key.toLowerCase()] : ''}</b><span>쿨타임 ${SKILLS[t].cd}초</span><p>${SKILLS[t].desc}</p></div></div>`;
   show('hero', head(o ? h.name : '미획득 영웅') + `
     <div class="cols">
       <div class="win hero-show r${h.rarity}">${sprite(id, 'huge' + (o ? '' : ' locked'))}<div class="hname"><small>${h.title}</small><b>${o ? h.name : '???'}</b>${stars(h.rarity)}</div></div>
       <div class="win pad scroll">
-        <dl class="kv"><div><dt>무기</dt><dd>${WEAPONS[h.weapon].name}</dd></div><div><dt>레벨</dt><dd>${o ? lv + ' / ' + MAX_LV : '-'}</dd></div><div><dt>각성</dt><dd>${o ? aw + ' / 5' : '-'}</dd></div>
-          <div><dt>HP</dt><dd>${st.hp}</dd></div><div><dt>공격력</dt><dd>${st.atk}</dd></div><div><dt>전투력</dt><dd>${power(h, lv, aw)}</dd></div></dl>
+        <dl class="kv"><div><dt>무기</dt><dd>${WEAPONS[h.weapon].name}</dd></div><div><dt>레벨</dt><dd>${o ? lv + ' / ' + lvCap(o.lb) : '-'}</dd></div><div><dt>각성 · 초월</dt><dd>${o ? aw + ' / 5 · ' + tr + ' / ' + TR_MAX : '-'}</dd></div><div><dt>한계돌파</dt><dd>${o ? o.lb + ' / ' + LB_MAX : '-'}</dd></div>
+          <div><dt>HP</dt><dd>${st.hp}</dd></div><div><dt>공격력</dt><dd>${st.atk}</dd></div><div><dt>전투력</dt><dd>${o ? heroPower(id, o) : power(h, 1, 0)}</dd></div></dl>
         ${sk(h.e, h.eName, 'E')}${sk(h.q, h.qName, 'Q')}
         <p class="flavor">${o ? h.desc : '소환 제단에서 만날 수 있어요.'}</p>
-        ${o ? `<div class="row"><button class="btn nav" data-a="main" ${S.party[0] === id ? 'disabled' : ''}>출전으로</button><button class="btn nav" data-a="sub" ${S.party[1] === id ? 'disabled' : ''}>교대로</button><button class="btn nav" data-a="tr">수련하기</button></div>` : ''}
+        ${o ? `<div class="row"><button class="btn nav" data-a="main" ${S.party[0] === id ? 'disabled' : ''}>출전으로</button><button class="btn nav" data-a="sub" ${S.party[1] === id ? 'disabled' : ''}>교대로</button><button class="btn nav" data-a="tr">육성하기</button></div>` : ''}
       </div>
     </div>`, {
     back: () => backTo(),
     main: () => { setParty(0, id); heroDetail(id, backTo); }, sub: () => { setParty(1, id); heroDetail(id, backTo); },
-    tr: () => train(() => heroDetail(id, backTo), id),
+    tr: () => grow(() => heroDetail(id, backTo), id),
   }, { back: () => backTo() });
 }
 function setParty(slot, id) {
@@ -382,7 +371,7 @@ export function party(backTo, slot = 0) {
   const S = G.save, P = S.party;
   const slotHtml = (i, label) => {
     const id = P[i];
-    return `<button class="pslot nav ${slot === i ? 'on' : ''}" data-a="slot" data-v="${i}"><span class="plabel">${label}</span>${id ? sprite(id, 'big') + `<b>${HERO[id].name}</b><span class="lv">Lv.${S.heroes[id].lv} · 전투력 ${power(HERO[id], S.heroes[id].lv, S.heroes[id].aw)}</span>` : '<b class="empty">비어 있음</b><span class="lv">아래에서 영웅을 고르세요</span>'}</button>`;
+    return `<button class="pslot nav ${slot === i ? 'on' : ''}" data-a="slot" data-v="${i}"><span class="plabel">${label}</span>${id ? sprite(id, 'big') + `<b>${HERO[id].name}</b><span class="lv">Lv.${S.heroes[id].lv} · 전투력 ${heroPower(id, S.heroes[id])}</span>` : '<b class="empty">비어 있음</b><span class="lv">아래에서 영웅을 고르세요</span>'}</button>`;
   };
   const owned = HEROES.filter(h => S.heroes[h.id]);
   show('party', head('편성', '<span class="note">출전 영웅으로 싸우고, G로 교대 영웅과 바꿔요</span>') + `
@@ -399,33 +388,142 @@ export function party(backTo, slot = 0) {
   }, { back: () => backTo() });
 }
 
-/* ---------------- 영웅 수련 ---------------- */
-export function train(backTo, focusId) {
-  const S = G.save, owned = HEROES.filter(h => S.heroes[h.id]).sort((a, b) => (S.party.indexOf(b.id) >= 0) - (S.party.indexOf(a.id) >= 0) || b.rarity - a.rarity);
-  const rows = owned.map(h => {
-    const o = S.heroes[h.id], max = o.lv >= MAX_LV, cost = lvCost(o.lv), st = heroStats(h, o.lv, o.aw), nx = max ? null : heroStats(h, o.lv + 1, o.aw);
-    return `<div class="trow r${h.rarity}">${face(h.id)}<div class="tinfo"><b>${h.name}</b> ${stars(h.rarity)}<span>Lv.${o.lv} · HP ${st.hp}${nx ? ' → ' + nx.hp : ''} · 공격력 ${st.atk}${nx ? ' → ' + nx.atk : ''}</span></div>
-      <button class="btn nav sm" data-a="up" data-v="${h.id}" ${max || S.silver < cost ? 'disabled' : ''} ${h.id === focusId ? 'autofocus' : ''}>${max ? '최대 레벨' : `레벨 업 <span class="cost">${coin('silver')}${fmt(cost)}</span>`}</button>
-      <button class="btn nav sm" data-a="up5" data-v="${h.id}" ${max || S.silver < cost ? 'disabled' : ''}>최대한</button></div>`;
+/* ---------------- 영웅 육성 ---------------- */
+export function grow(backTo, selId, tab = 0) {
+  const S = G.save;
+  const owned = HEROES.filter(h => S.heroes[h.id]).sort((a, b) => (S.party.indexOf(a.id) < 0) - (S.party.indexOf(b.id) < 0) || b.rarity - a.rarity);
+  const id = S.heroes[selId] ? selId : owned[0].id, h = HERO[id], o = S.heroes[id], cap = lvCap(o.lb);
+  const st = heroStats(h, o.lv, o.aw, o.tr);
+  const list = owned.map(d => { const e = S.heroes[d.id]; return `<button class="grow-row nav r${d.rarity} ${d.id === id ? 'on' : ''}" data-a="sel" data-v="${d.id}">${face(d.id)}<span><b>${d.name}</b>${trMark(e.tr)}<small>Lv.${e.lv}/${lvCap(e.lb)}</small></span>${canAny(d.id) ? '<i class="dot"></i>' : ''}</button>`; }).join('');
+  const tabs = ['레벨', '한계돌파', '초월', '스킬'].map((t, i) => `<button class="tab nav ${tab === i ? 'on' : ''}" data-a="tab" data-v="${i}">${t}</button>`).join('');
+  const cost = (c) => Object.entries(c).map(([k, v]) => `<span class="cst ${have(k) < v ? 'lack' : ''}">${coin(k)}${fmt(v)}</span>`).join('');
+  const enough = c => Object.entries(c).every(([k, v]) => have(k) >= v);
+  let body = '';
+  if (tab === 0) {
+    const max = o.lv >= cap, c = { silver: lvCost(o.lv) }, nx = max ? null : heroStats(h, o.lv + 1, o.aw, o.tr);
+    body = `<dl class="kv"><div><dt>레벨</dt><dd>${o.lv} / ${cap}</dd></div><div><dt>HP</dt><dd>${st.hp}${nx ? ` → <b class="up">${nx.hp}</b>` : ''}</dd></div><div><dt>공격력</dt><dd>${st.atk}${nx ? ` → <b class="up">${nx.atk}</b>` : ''}</dd></div></dl>
+      ${max ? `<p class="note gold">${o.lb < LB_MAX ? '최대 레벨이에요. 한계돌파로 상한을 10 올릴 수 있어요.' : '모든 한계를 돌파한 최대 레벨이에요.'}</p>` : `<p class="costs">필요 ${cost(c)}</p>`}
+      <div class="row"><button class="btn nav main" data-a="lv1" ${max || !enough(c) ? 'disabled' : ''}>레벨 업</button><button class="btn nav" data-a="lvmax" ${max || !enough(c) ? 'disabled' : ''}>최대한 올리기</button>${max && o.lb < LB_MAX ? '<button class="btn nav" data-a="tab" data-v="1">한계돌파로</button>' : ''}</div>`;
+  } else if (tab === 1) {
+    const done = o.lb >= LB_MAX, c = done ? null : LB_COST[o.lb], ready = !done && o.lv >= cap;
+    body = `<div class="pips">${Array.from({ length: LB_MAX }, (_, i) => `<i class="${i < o.lb ? 'on' : ''}"></i>`).join('')}<span>${o.lb} / ${LB_MAX}</span></div>
+      <p>한계돌파할 때마다 최대 레벨이 10씩 올라가요. 지금 최대 레벨 <b>${cap}</b>${done ? '' : ` → <b class="up">${cap + 10}</b>`}</p>
+      ${done ? '<p class="note gold">모든 한계를 돌파했어요.</p>' : `<p class="costs">필요 ${cost(c)}</p>${ready ? '' : `<p class="note">먼저 레벨을 ${cap}까지 올려야 해요. (지금 ${o.lv})</p>`}`}
+      <div class="row"><button class="btn nav main" data-a="lb" ${done || !ready || !enough(c) ? 'disabled' : ''}>한계돌파</button></div>
+      <p class="note">${MATS.crystal.desc}</p>`;
+  } else if (tab === 2) {
+    const done = o.tr >= TR_MAX, c = done ? null : TR_COST[o.tr], ready = !done && o.aw >= 5;
+    body = `<div class="pips tr">${Array.from({ length: TR_MAX }, (_, i) => `<i class="${i < o.tr ? 'on' : ''}" style="${i < o.tr ? `background:${TR_COLOR[i + 1]}` : ''}"></i>`).join('')}<span>${o.tr} / ${TR_MAX}</span></div>
+      <p>초월할 때마다 HP와 공격력이 <b>15%</b>씩 오르고, 전투 중 영웅 주위에 ${['', '푸른', '금빛', '분홍'][Math.min(TR_MAX, o.tr + 1)]} 빛이 감돌아요.</p>
+      <dl class="kv"><div><dt>각성</dt><dd>${o.aw} / 5</dd></div><div><dt>지금 HP</dt><dd>${st.hp}${done ? '' : ` → <b class="up">${heroStats(h, o.lv, o.aw, o.tr + 1).hp}</b>`}</dd></div><div><dt>지금 공격력</dt><dd>${st.atk}${done ? '' : ` → <b class="up">${heroStats(h, o.lv, o.aw, o.tr + 1).atk}</b>`}</dd></div></dl>
+      ${done ? '<p class="note gold">최고 단계까지 초월했어요.</p>' : `<p class="costs">필요 ${cost(c)}</p>${ready ? '' : '<p class="note">각성 5단계가 되어야 초월할 수 있어요. 소환 제단에서 같은 영웅을 더 만나면 각성해요.</p>'}`}
+      <div class="row"><button class="btn nav main" data-a="tr" ${done || !ready || !enough(c) ? 'disabled' : ''}>초월</button></div>
+      <p class="note">${MATS.shard.desc}</p>`;
+  } else {
+    body = ['e', 'q'].map(k => {
+      const t = h[k], nm = h[k + 'Name'], l = o.sk[k], done = l >= SKILL_MAX, c = done ? null : skillCost(l);
+      return `<div class="skill up"><img src="${Art.skillURL(t, h.pal.acc)}" alt=""><div><b>${k.toUpperCase()} · ${nm} <span class="lvtag">Lv.${l} / ${SKILL_MAX}</span></b>
+        <p>피해 +${(l - 1) * 10}%${done ? '' : ` → <b class="up">+${l * 10}%</b>`} · ${SKILLS[t].desc}</p>
+        ${done ? '<p class="note gold">최대 레벨</p>' : `<p class="costs">필요 ${cost(c)}</p>`}
+        <button class="btn nav sm" data-a="sk" data-v="${k}" ${done || !enough(c) ? 'disabled' : ''}>강화</button></div></div>`;
+    }).join('') + `<p class="note">${MATS.tome.desc}</p>`;
+  }
+  show('grow', head('영웅 육성', pills(['silver', 'moon', 'crystal', 'tome', 'shard'])) + `
+    <div class="cols grow">
+      <div class="win list scroll">${list}</div>
+      <div class="win pad scroll">
+        <div class="ghead r${h.rarity}">${sprite(id, 'big')}<div><small>${h.title}</small><b>${h.name}</b> ${stars(h.rarity)} ${trMark(o.tr)}<span class="lv">전투력 ${heroPower(id, o)} · 각성 ${o.aw} · 한계돌파 ${o.lb}</span></div></div>
+        <div class="tabs">${tabs}</div>
+        <div class="gbody">${body}</div>
+      </div>
+    </div>`, {
+    back: () => backTo(), sel: v => { sfx('ui'); grow(backTo, v, tab); }, tab: v => { sfx('ui'); grow(backTo, id, +v); },
+    lv1: () => { lvUp(id, 1); grow(backTo, id, tab); }, lvmax: () => { lvUp(id, 999); grow(backTo, id, tab); },
+    lb: () => { const c = LB_COST[o.lb]; if (!enough(c) || o.lv < cap) return sfx('no'); pay(c); o.lb++; sfx('level'); toast(`${h.name} 한계돌파! 최대 레벨 ${lvCap(o.lb)}`); saved(); grow(backTo, id, tab); },
+    tr: () => { const c = TR_COST[o.tr]; if (!enough(c) || o.aw < 5) return sfx('no'); pay(c); o.tr++; sfx('r5'); toast(`${h.name} ${o.tr}단계 초월!`); saved(); grow(backTo, id, tab); },
+    sk: k => { const l = o.sk[k], c = skillCost(l); if (l >= SKILL_MAX || !enough(c)) return sfx('no'); pay(c); o.sk[k]++; sfx('level'); toast(`${h[k + 'Name']} Lv.${o.sk[k]}`); saved(); grow(backTo, id, tab); },
+  }, { back: () => backTo(), keys: k => { if (k === 'KeyQ' || k === 'KeyE') { grow(backTo, id, (tab + (k === 'KeyE' ? 1 : 3)) % 4); return true; } } });
+  root.querySelector('.grow-row.on')?.scrollIntoView({ block: 'nearest' });
+}
+function pay(c) { const S = G.save; for (const [k, v] of Object.entries(c)) { if (k === 'moon' || k === 'silver') S[k] -= v; else S.mats[k] -= v; } }
+function saved() { G.persist(); G.refreshParty(); }
+function canAny(id) {
+  const S = G.save, o = S.heroes[id], cap = lvCap(o.lb), ok = c => Object.entries(c).every(([k, v]) => have(k) >= v);
+  if (o.lv >= cap && o.lb < LB_MAX && ok(LB_COST[o.lb])) return true;
+  if (o.aw >= 5 && o.tr < TR_MAX && ok(TR_COST[o.tr])) return true;
+  return false;
+}
+export const train = (backTo, id) => grow(backTo, id, 0);
+function lvUp(id, n) {
+  const S = G.save, o = S.heroes[id], cap = lvCap(o.lb); let k = 0;
+  while (k < n && o.lv < cap && S.silver >= lvCost(o.lv)) { S.silver -= lvCost(o.lv); o.lv++; k++; }
+  if (k) { sfx('level'); saved(); toast(`${HERO[id].name} Lv.${o.lv}`); } else sfx('no');
+}
+
+/* ---------------- 영구 강화 ---------------- */
+export function forge(backTo) {
+  const S = G.save, P = S.perm;
+  const val = (p, l) => p.k === 'crit' ? ((p.add + l * p.per) * 100).toFixed(1) + '%' : p.k === 'critd' ? Math.round((p.add + l * p.per) * 100) + '%' : '+' + Math.round(l * p.per * 100) + '%';
+  const cards = PERM.map(p => {
+    const l = P[p.k] || 0, done = l >= p.max, c = done ? 0 : permCost(p, l);
+    return `<div class="pcard"><div class="ptop"><b>${p.name}</b><span class="lvtag">Lv.${l} / ${p.max}</span></div>
+      <p>${p.desc} <b>${val(p, l)}</b>${done ? '' : ` → <b class="up">${val(p, l + 1)}</b>`}</p>
+      <div class="pbar"><i style="width:${l / p.max * 100}%"></i></div>
+      <button class="btn nav sm ${done ? '' : 'main'}" data-a="up" data-v="${p.k}" ${done || S.silver < c ? 'disabled' : ''}>${done ? '최대' : `강화 <span class="cost">${coin('silver')}${fmt(c)}</span>`}</button></div>`;
   }).join('');
-  show('train', head('영웅 수련', wallet()) + `<div class="win pad scroll"><p class="note">은화로 레벨을 올려요. 레벨이 오를 때마다 HP와 공격력이 7%씩 올라요. 은화는 적을 쓰러뜨리거나 스테이지를 클리어하면 받아요.</p>${rows}</div>`, {
+  const total = Object.values(P).reduce((a, v) => a + v, 0);
+  show('forge', head('영구 강화', pills(['silver'])) + `<div class="win pad scroll"><p class="note">은화로 계정 전체를 강화해요. 지금 가진 영웅과 앞으로 만날 영웅 모두에게 적용돼요. 총 강화 ${total}회</p><div class="pgrid">${cards}</div></div>`, {
     back: () => backTo(),
-    up: id => { lvUp(id, 1); train(backTo, id); },
-    up5: id => { lvUp(id, 99); train(backTo, id); },
+    up: k => { const p = PERM.find(x => x.k === k), l = P[k] || 0, c = permCost(p, l); if (l >= p.max || S.silver < c) return sfx('no'); S.silver -= c; P[k] = l + 1; sfx('level'); saved(); forge(backTo); root.querySelector(`[data-v="${k}"]`)?.focus(); },
   }, { back: () => backTo() });
 }
-function lvUp(id, n) {
-  const S = G.save, o = S.heroes[id]; let k = 0;
-  while (k < n && o.lv < MAX_LV && S.silver >= lvCost(o.lv)) { S.silver -= lvCost(o.lv); o.lv++; k++; }
-  if (k) { sfx('level'); G.persist(); G.refreshParty(); toast(`${HERO[id].name} Lv.${o.lv}`); } else sfx('no');
+
+/* ---------------- 업적 · 기록 ---------------- */
+export function achievements(backTo, tab = 0) {
+  const S = G.save;
+  const tabs = `<div class="tabs top"><button class="tab nav ${tab === 0 ? 'on' : ''}" data-a="tab" data-v="0">업적${achClaimable(S) ? ` <i class="cnt">${achClaimable(S)}</i>` : ''}</button><button class="tab nav ${tab === 1 ? 'on' : ''}" data-a="tab" data-v="1">기록</button></div>`;
+  const rw = r => Object.entries(r).map(([k, v]) => `<span class="cst">${coin(k)}${fmt(v)}</span>`).join('');
+  let body;
+  if (tab === 0) {
+    const rows = ACH.map(a => ({ a, v: achValue(S, a.kind), got: !!S.ach[a.id] }))
+      .sort((x, y) => (y.v >= y.a.target && !y.got) - (x.v >= x.a.target && !x.got) || x.got - y.got || ACH.indexOf(x.a) - ACH.indexOf(y.a));
+    const n = rows.filter(r => r.v >= r.a.target && !r.got).length, done = rows.filter(r => r.got).length;
+    body = `<div class="win pad scroll"><div class="arow-head"><span class="note">완료 ${done} / ${ACH.length}</span><button class="btn nav sm main" data-a="all" ${n ? '' : 'disabled'}>모두 받기${n ? ' (' + n + ')' : ''}</button></div>
+      ${rows.map(({ a, v, got }) => { const ok = v >= a.target; return `<div class="arow ${got ? 'got' : ok ? 'ready' : ''}">
+        <div class="ainfo"><b>${a.name}</b><span>${ACH_KINDS[a.kind]} ${fmt(a.target)}</span><div class="pbar"><i style="width:${Math.min(1, v / a.target) * 100}%"></i></div><small>${fmt(Math.min(v, a.target))} / ${fmt(a.target)}</small></div>
+        <div class="arw">${rw(a.reward)}</div>
+        <button class="btn nav sm ${ok && !got ? 'main' : ''}" data-a="get" data-v="${a.id}" ${ok && !got ? '' : 'disabled'}>${got ? '받음' : ok ? '받기' : '진행 중'}</button></div>`; }).join('')}</div>`;
+  } else {
+    const own = Object.keys(S.heroes).length, cl = Object.keys(S.cleared).length, days = Math.max(1, Math.ceil((Date.now() - S.created) / 864e5));
+    body = `<div class="win pad scroll"><dl class="stats">
+        <div><dt>클리어한 스테이지</dt><dd>${cl} <small>/ ${STAGES.length}</small></dd></div>
+        <div><dt>무한 회랑 최고</dt><dd>${S.endlessBest} <small>웨이브</small></dd></div>
+        <div><dt>보유 영웅</dt><dd>${own} <small>/ ${HEROES.length}</small></dd></div>
+        <div><dt>처치한 적</dt><dd>${fmt(S.kills)}</dd></div>
+        <div><dt>처치한 보스</dt><dd>${fmt(S.bossKills || 0)}</dd></div>
+        <div><dt>소환 횟수</dt><dd>${fmt(S.pulls)}</dd></div>
+        <div><dt>영구 강화</dt><dd>${achValue(S, 'perm')} <small>회</small></dd></div>
+        <div><dt>업적</dt><dd>${Object.keys(S.ach).length} <small>/ ${ACH.length}</small></dd></div>
+        <div><dt>함께한 날</dt><dd>${days} <small>일째</small></dd></div>
+      </dl>
+      <div class="glabel">보유 재료</div><p class="rew">${['crystal', 'tome', 'shard'].map(k => `<span class="cst" title="${MATS[k].desc}">${coin(k)}${MATS[k].name} ${fmt(S.mats[k])}</span>`).join(' ')}</p>
+      <p class="note">기록은 이 기기 브라우저에 저장돼요.</p></div>`;
+  }
+  show('ach', head('업적 비석', pills(['moon', 'silver', 'crystal', 'tome', 'shard'])) + tabs + body, {
+    back: () => backTo(), tab: v => { sfx('ui'); achievements(backTo, +v); },
+    get: id => { claim(ACH.find(a => a.id === id)); sfx('level'); saved(); achievements(backTo, 0); },
+    all: () => { let n = 0; for (const a of ACH) if (!S.ach[a.id] && achValue(S, a.kind) >= a.target) { claim(a); n++; } if (n) { sfx('r4'); toast(`업적 보상 ${n}개를 받았어요.`); saved(); } achievements(backTo, 0); },
+  }, { back: () => backTo() });
+  function claim(a) { S.ach[a.id] = Date.now(); for (const [k, v] of Object.entries(a.reward)) { if (k === 'moon' || k === 'silver') S[k] += v; else S.mats[k] += v; } }
 }
+export const records = backTo => achievements(backTo, 1);
 
 /* ---------------- 출정 ---------------- */
 export function stages(backTo, tab, selId) {
   const S = G.save;
   const unlocked = s => !s.prev || S.cleared[s.prev];
   if (tab == null) { const nxt = STAGES.find(s => !S.cleared[s.id] && unlocked(s)); tab = nxt ? nxt.chapter - 1 : 0; selId = selId || (nxt && nxt.id); }
-  const myPow = S.party.filter(Boolean).reduce((a, id) => Math.max(a, power(HERO[id], S.heroes[id].lv, S.heroes[id].aw)), 0);
+  const myPow = S.party.filter(Boolean).reduce((a, id) => Math.max(a, heroPower(id, S.heroes[id])), 0);
   const tabs = CHAPTERS.map((c, i) => `<button class="tab nav ${tab === i ? 'on' : ''}" data-a="tab" data-v="${i}">제${c.id}장 ${c.name}</button>`).join('') + `<button class="tab nav ${tab === 2 ? 'on' : ''}" data-a="tab" data-v="2">무한 회랑</button>`;
   let body;
   if (tab === 2) {
@@ -467,7 +565,9 @@ export function result(r) {
         <div><dt>처치</dt><dd>${r.kills}</dd></div><div><dt>시간</dt><dd>${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}</dd></div>
         <div><dt>은화</dt><dd>${coin('silver')} +${fmt(r.silver)}</dd></div>
         ${r.moon ? `<div><dt>월석</dt><dd>${coin('moon')} +${fmt(r.moon)}${r.first ? ' <small>첫 클리어</small>' : ''}</dd></div>` : ''}
+        ${r.mats && (r.mats.crystal || r.mats.tome) ? `<div><dt>재료</dt><dd>${r.mats.crystal ? coin('crystal') + '+' + r.mats.crystal + ' ' : ''}${r.mats.tome ? coin('tome') + '+' + r.mats.tome : ''}</dd></div>` : ''}
       </dl>
+      ${r.ach ? `<p class="note gold">받을 수 있는 업적 보상이 ${r.ach}개 있어요. 월하정의 업적 비석에서 받으세요.</p>` : ''}
       ${!win && !r.endless ? '<p class="note">영웅 수련에서 레벨을 올리거나, 교대 영웅을 편성하면 더 오래 버틸 수 있어요.</p>' : ''}
       <div class="row">
         <button class="btn nav" data-a="re">다시 하기</button>
@@ -489,11 +589,11 @@ export function devPanel(backTo) {
     <div class="cols">
       <div class="win pad scroll">
         <div class="glabel">재화</div>
-        <div class="dgrid">${b('moon', '월석 +10,000', ns)}${b('silver', '은화 +100,000', ns)}${b('zero', '재화 0으로', ns)}</div>
+        <div class="dgrid">${b('moon', '월석 +10,000', ns)}${b('silver', '은화 +100,000', ns)}${b('mats', '재료 3종 +100', ns)}${b('zero', '재화 0으로', ns)}</div>
         <div class="glabel">영웅</div>
-        <div class="dgrid">${b('allh', '모든 영웅 획득', ns)}${b('maxh', '보유 영웅 Lv.40 · 각성 5', ns)}${b('reseth', '영웅 초기화', ns)}${b('p6', '다음 소환 ★6 확정', ns)}</div>
+        <div class="dgrid">${b('allh', '모든 영웅 획득', ns)}${b('maxh', '보유 영웅 전부 최대 육성', ns)}${b('reseth', '영웅 초기화', ns)}${b('p6', '다음 소환 ★6 확정', ns)}</div>
         <div class="glabel">진행</div>
-        <div class="dgrid">${b('clr', '모든 스테이지 클리어', ns)}${b('unclr', '클리어 기록 초기화', ns)}</div>
+        <div class="dgrid">${b('clr', '모든 스테이지 클리어', ns)}${b('unclr', '클리어 기록 초기화', ns)}${b('unach', '업적 수령 초기화', ns)}</div>
         <div class="glabel">전투 도구 ${inBattle ? '' : '<small>· 전투 중에만</small>'}</div>
         <div class="dgrid">${b('kill', '적 모두 처치', !inBattle)}${b('skip', '웨이브 넘기기', !inBattle)}${b('win', '바로 승리', !inBattle || W.endless)}${b('boss', '보스 소환', !inBattle)}${b('elite', '기사 소환', !inBattle)}${b('heal', 'HP 가득', !inBattle)}</div>
         ${ns ? '<p class="note">저장 데이터가 없어서 재화·영웅 도구는 새로 시작한 뒤에 쓸 수 있어요.</p>' : ''}
@@ -513,12 +613,14 @@ export function devPanel(backTo) {
     spd: () => { const L = [0.5, 1, 2, 3], i = L.indexOf(o.speed || 1); o.speed = L[(i + 1) % L.length]; G.applySettings(); sfx('ui'); devPanel(backTo); },
     off: () => { st.dev = false; G.applySettings(); toast('개발자 모드를 껐어요.'); backTo(); },
     moon: () => done(() => { S.moon += 10000; }), silver: () => done(() => { S.silver += 100000; }), zero: () => done(() => { S.moon = 0; S.silver = 0; }),
-    allh: () => done(() => { for (const h of HEROES) if (!S.heroes[h.id]) S.heroes[h.id] = { lv: 1, aw: 0 }; }),
-    maxh: () => done(() => { for (const k in S.heroes) S.heroes[k] = { lv: MAX_LV, aw: 5 }; }),
-    reseth: () => done(() => { S.heroes = { ria: { lv: 1, aw: 0 } }; S.party = ['ria', null]; }),
+    allh: () => done(() => { for (const h of HEROES) if (!S.heroes[h.id]) S.heroes[h.id] = newEntry(); }),
+    mats: () => done(() => { for (const k in S.mats) S.mats[k] += 100; }),
+    maxh: () => done(() => { for (const k in S.heroes) S.heroes[k] = { lv: lvCap(LB_MAX), aw: 5, lb: LB_MAX, tr: TR_MAX, sk: { e: SKILL_MAX, q: SKILL_MAX } }; }),
+    reseth: () => done(() => { S.heroes = { ria: newEntry() }; S.party = ['ria', null]; }),
     p6: () => done(() => { S.pity6 = GACHA.pity6 - 1; }, '다음 소환은 ★6이 나와요.'),
     clr: () => done(() => { for (const s of STAGES) S.cleared[s.id] = true; }),
     unclr: () => done(() => { S.cleared = {}; S.endlessBest = 0; }),
+    unach: () => done(() => { S.ach = {}; }),
     kill: () => { W.devKillAll(); toast('적을 모두 처치했어요.'); }, skip: () => { W.devSkipWave(); toast('웨이브를 넘겼어요.'); },
     win: () => { W.devWin(); close(); G.resume(); }, boss: () => { W.devSpawn('eclipse'); close(); G.resume(); }, elite: () => { W.devSpawn('knight'); close(); G.resume(); },
     heal: () => { for (const p of W.party) { p.hp = p.maxHp; p.dead = false; } toast('HP를 채웠어요.'); },

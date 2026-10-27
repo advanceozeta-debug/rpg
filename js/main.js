@@ -1,5 +1,5 @@
 // 월하검무 — 시작점
-import { VW, VH, STAGE, STAGES, HERO, GACHA } from './data.js';
+import { VW, VH, STAGE, STAGES, HERO, GACHA, permBonus, achClaimable } from './data.js';
 import * as Art from './art.js';
 import { World, txt } from './world.js';
 import { drawHud } from './hud.js';
@@ -23,7 +23,7 @@ const G = {
   restart() { const b = G.battle; if (!b) return; b.endless ? startEndless() : startStage(b.stageId); },
   abandon() {
     const W = G.world, b = G.battle; if (!W || !b) return enterHub();
-    const silver = Math.floor(W.run.silver / 2); G.save.silver += silver; G.save.kills += W.run.kills;
+    const silver = Math.floor(W.run.silver / 2); G.save.silver += silver; G.save.kills += W.run.kills; G.save.bossKills = (G.save.bossKills || 0) + W.run.bossKills;
     if (b.endless) { G.save.moon += W.run.moon; G.save.endlessBest = Math.max(G.save.endlessBest, W.run.wave); }
     G.persist(); enterHub(); UI.toast(`은화 ${silver}개를 챙겨 돌아왔어요.`);
   },
@@ -95,14 +95,14 @@ function openStation(id) {
   sfx('ui'); clearInput();
   G.lastHubX = G.world.hero.x;
   const b = () => UI.close();
-  ({ stele: () => UI.records(b), codex: () => UI.codex(b), party: () => UI.party(b), altar: () => UI.gacha(b), train: () => UI.train(b), gate: () => UI.stages(b) })[id]?.();
+  ({ stele: () => UI.achievements(b), codex: () => UI.codex(b), party: () => UI.party(b), altar: () => UI.gacha(b), grow: () => UI.grow(b), forge: () => UI.forge(b), gate: () => UI.stages(b) })[id]?.();
 }
 function startStage(id) {
   const st = STAGE[id]; if (!st) return;
   if (G.scene === 'hub' && G.world) G.lastHubX = G.world.hero.x;
   battleBg[st.theme] = battleBg[st.theme] || Art.buildBattleBg(st.theme);
   G.battle = { stageId: id, endless: false };
-  G.world = new World({ mode: 'battle', bg: battleBg[st.theme], stage: st, waves: st.waves, party: partyEntries(), settings: G.settings, startX: 60,
+  G.world = new World({ mode: 'battle', bg: battleBg[st.theme], stage: st, waves: st.waves, party: partyEntries(), perm: G.save?.perm, settings: G.settings, startX: 60,
     cb: { victory: run => finish(true, run), defeat: run => finish(false, run), bossBgm: () => playBgm('boss') } });
   G.scene = 'battle'; G.paused = false; document.body.dataset.scene = 'battle';
   UI.close(); playBgm('battle');
@@ -111,7 +111,7 @@ function startEndless() {
   if (G.scene === 'hub' && G.world) G.lastHubX = G.world.hero.x;
   battleBg.corridor = battleBg.corridor || Art.buildBattleBg('corridor');
   G.battle = { endless: true };
-  G.world = new World({ mode: 'battle', bg: battleBg.corridor, endless: true, stage: { id: '∞', name: '무한 회랑', scale: 1 }, party: partyEntries(), settings: G.settings, startX: 60,
+  G.world = new World({ mode: 'battle', bg: battleBg.corridor, endless: true, stage: { id: '∞', name: '무한 회랑', scale: 1 }, party: partyEntries(), perm: G.save?.perm, settings: G.settings, startX: 60,
     cb: { defeat: run => finish(false, run), bossBgm: () => playBgm('boss') } });
   G.scene = 'battle'; G.paused = false; document.body.dataset.scene = 'battle';
   UI.close(); playBgm('battle');
@@ -128,7 +128,14 @@ function finish(win, run) {
       const nx = STAGES[st.index + 1]; r.next = nx ? nx.id : null;
     }
   }
+  S.bossKills = (S.bossKills || 0) + run.bossKills;
+  r.silver = Math.round(r.silver * (1 + permBonus(S.perm).gold));
+  const m = { crystal: 0, tome: 0, shard: 0 };
+  if (b.endless) { const n5 = Math.floor(run.wave / 5); m.crystal = n5 * 2; m.tome = n5; }
+  else if (win) { const st = STAGE[b.stageId]; m.crystal = (st.boss ? 5 : 1 + Math.floor(st.index / 3)) + (r.first ? 2 : 0); m.tome = (st.boss ? 3 : 1) + (r.first ? 1 : 0); }
+  r.mats = m; for (const k in m) S.mats[k] += m[k];
   S.silver += r.silver; S.moon += r.moon;
+  r.ach = achClaimable(S);
   G.persist(); if (!win) sfx('lose');
   playBgm('hub');
   UI.result(r);
@@ -166,7 +173,7 @@ function loop(t) {
   if (W) {
     const blocked = UI.isOpen() || G.scene === 'title';
     if (!(G.scene === 'battle' && (G.paused || (UI.isOpen() && !W.done)))) W.update(dt, blocked ? EMPTY : Input);
-    W.badge = G.save && G.save.moon >= GACHA.cost1;
+    if (G.save && (W._bt = (W._bt || 0) + 1) % 30 === 1) W.badges = { altar: G.save.moon >= GACHA.cost1, stele: achClaimable(G.save) > 0 };
     W.draw(L, Hc, sc);
     W.hideLabels = G.scene === 'title';
     if (G.scene !== 'title' && !UI.isOpen()) drawHud(Hc, W, G.save);
