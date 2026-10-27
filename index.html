@@ -212,8 +212,20 @@ small{font-size:.75em;color:var(--dim)}
 #pad{display:none}
 body.touch #pad{display:block;position:fixed;left:0;right:0;bottom:0;height:230px;pointer-events:none;z-index:10;padding:0 max(14px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(14px,env(safe-area-inset-left,0px))}
 body.touch[data-scene="title"] #pad,body.touch.menuopen #pad{display:none}
-#pad .stick{pointer-events:auto;position:absolute;left:max(18px,env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));width:132px;height:132px;border-radius:50%;background:rgba(30,22,64,.35);border:2px solid rgba(190,180,255,.3);touch-action:none}
-#pad .knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(190,180,255,.28);border:2px solid rgba(220,210,255,.5)}
+#pad .zone{pointer-events:auto;position:absolute;left:0;bottom:0;width:45%;height:70%;touch-action:none}
+#pad .stick{pointer-events:auto;position:absolute;left:max(18px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:180px;height:180px;border-radius:50%;background:rgba(30,22,64,.35);border:2px solid rgba(190,180,255,.32);touch-action:none;transform-origin:left bottom}
+#pad .stick.float{background:rgba(30,22,64,.5);border-color:rgba(190,180,255,.55)}
+#pad .knob{position:absolute;left:50%;top:50%;width:78px;height:78px;margin:-39px 0 0 -39px;border-radius:50%;background:rgba(190,180,255,.3);border:2px solid rgba(220,210,255,.6);pointer-events:none}
+body.padedit #pad{display:block!important;z-index:30;background:rgba(6,4,16,.35)}
+body.padedit #pad .zone{display:none}
+body.padedit #pad [data-id]{outline:2px dashed var(--gold);outline-offset:3px;cursor:grab}
+body.padedit #pad [data-id].drag{outline-color:var(--blade)}
+#padbar{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:40;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;max-width:calc(100% - 24px);background:rgba(16,11,34,.95);border:1px solid var(--line2);border-radius:6px;padding:8px 12px;font:400 15px var(--display);color:var(--ink)}
+#padbar p{margin:0;width:100%;text-align:center;color:var(--moon)}
+#padbar .grp{display:flex;align-items:center;gap:6px}
+#padbar button{font:400 15px var(--display);color:var(--ink);background:#2a2058;border:1px solid var(--line2);border-radius:4px;min-width:38px;min-height:36px;padding:0 10px;cursor:pointer}
+#padbar button.main{background:#4a3aa0;border-color:#a796ff}
+#padbar b{font:400 13px var(--pixel);min-width:44px;text-align:center;color:var(--gold)}
 #pad .acts{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));width:236px;height:206px}
 .pb{pointer-events:auto;position:absolute;width:56px;height:56px;border-radius:50%;background:rgba(30,22,64,.5);border:2px solid rgba(190,180,255,.4);color:var(--ink);font:400 15px var(--display);display:grid;place-items:center;padding:0;touch-action:none}
 .pb.on{background:rgba(127,227,255,.35)}
@@ -240,16 +252,24 @@ body.touch[data-scene="title"] #pad,body.touch.menuopen #pad{display:none}
     </div>
   </div>
 </div>
+<div id="padbar" hidden>
+  <p>조이스틱과 버튼을 끌어서 옮기세요</p>
+  <span class="grp">조이스틱 <button data-pe="st-" aria-label="조이스틱 작게">−</button><b data-v="st">100%</b><button data-pe="st+" aria-label="조이스틱 크게">+</button></span>
+  <span class="grp">버튼 <button data-pe="bt-" aria-label="버튼 작게">−</button><b data-v="bt">100%</b><button data-pe="bt+" aria-label="버튼 크게">+</button></span>
+  <button data-pe="reset">처음 배치로</button>
+  <button data-pe="done" class="main">완료</button>
+</div>
 <div id="pad" aria-hidden="true">
-  <div class="stick"><div class="knob"></div></div>
+  <div class="zone"></div>
+  <div class="stick" data-id="stick"><div class="knob"></div></div>
   <div class="acts">
-    <button class="pb atk" data-act="attack">공격</button>
-    <button class="pb jmp" data-act="jump">점프</button>
-    <button class="pb dsh" data-act="dash">대시</button>
-    <button class="pb s1" data-act="skill1">스킬1</button>
-    <button class="pb s2" data-act="skill2">스킬2</button>
-    <button class="pb tag" data-act="tag">교대</button>
-    <button class="pb int" data-act="interact">상호</button>
+    <button class="pb atk" data-id="atk" data-act="attack">공격</button>
+    <button class="pb jmp" data-id="jmp" data-act="jump">점프</button>
+    <button class="pb dsh" data-id="dsh" data-act="dash">대시</button>
+    <button class="pb s1" data-id="s1" data-act="skill1">스킬1</button>
+    <button class="pb s2" data-id="s2" data-act="skill2">스킬2</button>
+    <button class="pb tag" data-id="tag" data-act="tag">교대</button>
+    <button class="pb int" data-id="int" data-act="interact">상호</button>
   </div>
 </div>
 <script type="module" src="js/main.js"></script>

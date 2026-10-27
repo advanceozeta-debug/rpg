@@ -144,24 +144,30 @@ const SETROWS = [
   { k: 'shake', name: '화면 흔들림', desc: '강한 공격이 맞을 때 화면이 흔들리는 정도예요. 어지러우면 줄이세요.', type: 'pct' },
   { k: 'nums', name: '데미지 숫자', desc: '적에게 준 피해량을 머리 위에 띄울지 정해요.', type: 'bool' },
   { k: 'touch', name: '터치 패드', desc: '화면 조작 버튼을 언제 보일지 정해요. 자동이면 터치 화면에서만 보여요.', type: 'enum', opts: [['auto', '자동'], ['on', '항상 켜기'], ['off', '끄기']] },
+  { k: 'stickMode', name: '조이스틱 방식', desc: '따라가기: 화면 왼쪽 아래 어디를 눌러도 그 자리에 조이스틱이 생겨요. 고정: 원 안을 눌러야 움직여요.', type: 'enum', opts: [['float', '따라가기'], ['fixed', '고정']] },
+  { k: 'stickSize', name: '조이스틱 크기', desc: '왼쪽 조이스틱의 크기예요. 60%에서 180%까지 바꿀 수 있어요.', type: 'scale', min: .6, max: 1.8 },
+  { k: 'btnSize', name: '버튼 크기', desc: '오른쪽 공격·점프·스킬 버튼의 크기예요.', type: 'scale', min: .6, max: 1.8 },
 ];
 export function settings(backTo) {
   const st = G.settings;
-  const val = r => r.type === 'pct' ? Math.round(st[r.k] * 100) + '%' : r.type === 'bool' ? (st[r.k] ? '켜기' : '끄기') : r.opts.find(o => o[0] === st[r.k])[1];
+  const val = r => r.type === 'pct' || r.type === 'scale' ? Math.round(st[r.k] * 100) + '%' : r.type === 'bool' ? (st[r.k] ? '켜기' : '끄기') : r.opts.find(o => o[0] === st[r.k])[1];
   const rows = SETROWS.map((r, i) => `<button class="srow nav" data-a="cyc" data-v="${i}" data-l="dec" data-r="inc" data-desc="${esc(r.desc)}"><span>${r.name}</span><span class="sval"><i data-a="dec" data-v="${i}">◀</i><b>${val(r)}</b><i data-a="inc" data-v="${i}">▶</i></span></button>`).join('');
   const change = (i, d) => {
     const r = SETROWS[+i];
     if (r.type === 'pct') st[r.k] = Math.round(Math.max(0, Math.min(1, st[r.k] + d * .1)) * 10) / 10;
+    else if (r.type === 'scale') st[r.k] = Math.round(Math.max(r.min, Math.min(r.max, st[r.k] + d * .1)) * 10) / 10;
     else if (r.type === 'bool') st[r.k] = !st[r.k];
     else { const ix = r.opts.findIndex(o => o[0] === st[r.k]); st[r.k] = r.opts[(ix + d + r.opts.length) % r.opts.length][0]; }
     G.applySettings(); sfx('ui');
     const el = root.querySelector(`.srow[data-v="${i}"] b`); if (el) el.textContent = val(r);
-    root.querySelector('.sdesc .bar i')?.style.setProperty('width', r.type === 'pct' ? st[r.k] * 100 + '%' : '0');
+    root.querySelector('.sdesc .bar i')?.style.setProperty('width', r.type === 'pct' ? st[r.k] * 100 + '%' : r.type === 'scale' ? (st[r.k] - r.min) / (r.max - r.min) * 100 + '%' : '0');
+    const bg = root.querySelector('.sdesc .big'); if (bg) bg.textContent = val(r);
   };
   show('settings', head('설정') + `
     <div class="cols">
       <div class="win list">
         <div class="glabel">소리 · 화면 · 조작</div>${rows}
+        <button class="srow nav" data-a="pedit" data-desc="조이스틱과 버튼을 손가락으로 끌어서 원하는 자리에 놓고, 크기도 바꿀 수 있어요."><span>터치 패드 배치 · 크기 편집</span></button>
         <div class="glabel">기록</div>
         <button class="srow nav" data-a="exp" data-desc="다른 기기로 옮기거나 백업할 수 있게 저장 데이터를 글자 코드로 꺼내요." ${G.save ? '' : 'disabled'}><span>저장 데이터 내보내기 / 가져오기</span></button>
         <button class="srow nav" data-a="cpn" data-desc="받은 쿠폰 코드를 입력해 보상을 받아요." ${G.save ? '' : 'disabled'}><span>쿠폰 코드 입력</span></button>
@@ -170,12 +176,13 @@ export function settings(backTo) {
       <div class="win sdesc"><h3>설정 안내</h3><p>항목을 고르면 설명이 여기에 나와요.</p></div>
     </div>`, {
     back: () => backTo(), cyc: (i, b) => { if (!b.matches('.srow')) return; change(i, 1); }, inc: i => change(i, 1), dec: i => change(i, -1),
+    pedit: () => { close(); G.editPad(() => settings(backTo)); },
     exp: () => dataPanel(() => settings(backTo)), cpn: () => coupon(() => settings(backTo)),
     wipe: () => confirmBox('이 기기의 저장 데이터를 모두 지울까요?<br><small>영웅, 재화, 클리어 기록이 전부 사라져요.</small>', '모두 지우기', () => G.wipe(), () => settings(backTo)),
   }, { back: () => backTo(), after: r => {
     r.querySelectorAll('.srow').forEach(b => b.addEventListener('focus', () => {
       const d = r.querySelector('.sdesc'); const i = b.dataset.v, row = i != null && b.dataset.a === 'cyc' ? SETROWS[+i] : null;
-      d.innerHTML = `<h3>${b.querySelector('span').textContent}</h3><p>${b.dataset.desc || ''}</p>${row && row.type === 'pct' ? `<div class="bar"><i style="width:${st[row.k] * 100}%"></i></div><b class="big">${Math.round(st[row.k] * 100)}%</b>` : ''}`;
+      d.innerHTML = `<h3>${b.querySelector('span').textContent}</h3><p>${b.dataset.desc || ''}</p>${row && (row.type === 'pct' || row.type === 'scale') ? `<div class="bar"><i style="width:${row.type === 'scale' ? (st[row.k] - row.min) / (row.max - row.min) * 100 : st[row.k] * 100}%"></i></div><b class="big">${Math.round(st[row.k] * 100)}%</b>` : ''}`;
     }));
     r.querySelector('.srow')?.dispatchEvent(new Event('focus'));
   } });

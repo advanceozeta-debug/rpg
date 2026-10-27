@@ -23,10 +23,10 @@ function fix(s) {
 export function writeSave(S) { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (e) { return false; } }
 export function wipeSave() { try { localStorage.removeItem(KEY); } catch (e) {} }
 
-export const defaultSettings = () => ({ bgm: .5, sfx: .8, shake: 1, nums: true, touch: 'auto' });
+export const defaultSettings = () => ({ bgm: .5, sfx: .8, shake: 1, nums: true, touch: 'auto', stickSize: 1, btnSize: 1, stickMode: 'float', padPos: {} });
 export function loadSettings() {
   const d = defaultSettings();
-  try { const s = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (s) return { ...d, ...s }; } catch (e) {}
+  try { const s = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (s) { const r = { ...d, ...s }; if (!r.padPos || typeof r.padPos !== 'object') r.padPos = {}; return r; } } catch (e) {}
   return d;
 }
 export function writeSettings(st) { try { localStorage.setItem(SKEY, JSON.stringify(st)); } catch (e) {} }

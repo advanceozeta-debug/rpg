@@ -3,7 +3,7 @@ import { VW, VH, STAGE, STAGES, HERO, GACHA } from './data.js';
 import * as Art from './art.js';
 import { World } from './world.js';
 import { drawHud } from './hud.js';
-import { Input, bindKeyboard, bindPad, consume, clearInput } from './input.js';
+import { Input, bindKeyboard, bindPad, consume, clearInput, applyPad, bindPadEditor, paintBar } from './input.js';
 import { initAudio, sfx, playBgm, setVolumes } from './audio.js';
 import { newSave, loadSave, writeSave, wipeSave, loadSettings, writeSettings } from './save.js';
 import * as UI from './ui.js';
@@ -17,7 +17,7 @@ let sc = 1;
 const G = {
   save: loadSave(), settings: loadSettings(), world: null, scene: 'title', paused: false, battle: null,
   persist() { writeSave(G.save); },
-  applySettings() { writeSettings(G.settings); setVolumes(G.settings.bgm, G.settings.sfx); applyTouch(); if (G.world) G.world.settings = G.settings; },
+  applySettings() { writeSettings(G.settings); setVolumes(G.settings.bgm, G.settings.sfx); applyTouch(); applyPad($('#pad'), G.settings); if (G.world) G.world.settings = G.settings; },
   enterHub, newGame, toTitle, startStage, startEndless,
   resume() { G.paused = false; },
   restart() { const b = G.battle; if (!b) return; b.endless ? startEndless() : startStage(b.stageId); },
@@ -52,7 +52,17 @@ function applyTouch() {
   document.body.classList.toggle('touch', on);
 }
 applyTouch();
-bindPad($('#pad'));
+bindPad($('#pad'), () => G.settings);
+applyPad($('#pad'), G.settings);
+let editDone = null;
+G.editPad = done => {
+  editDone = done; clearInput(); Input.editing = true;
+  document.body.classList.add('padedit'); $('#padbar').hidden = false; paintBar($('#padbar'), G.settings);
+};
+bindPadEditor($('#pad'), $('#padbar'), () => G.settings, () => writeSettings(G.settings), () => {
+  Input.editing = false; document.body.classList.remove('padedit'); $('#padbar').hidden = true;
+  writeSettings(G.settings); const d = editDone; editDone = null; d && d();
+});
 
 /* ---------- 장면 ---------- */
 let hubBg = null; const battleBg = {};
