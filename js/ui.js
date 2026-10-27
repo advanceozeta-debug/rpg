@@ -4,7 +4,7 @@ import * as Art from './art.js';
 import { sfx } from './audio.js';
 import { exportCode, importCode } from './save.js';
 
-let root, G, cur = null;
+let root, G, cur = null, verTaps = 0;
 const esc = s => String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const fmt = n => Math.round(n).toLocaleString();
 const coin = k => `<img class="coin" src="${Art.coinURL(k)}" alt="${k === 'moon' ? '월석' : '은화'}">`;
@@ -94,7 +94,7 @@ export function title() {
       <button class="btn nav" data-a="set">설정</button>
       <button class="btn nav" data-a="ctl">조작법</button>
     </div>
-    <div class="foot"><span>${has ? '저장: 이 기기 브라우저' : '저장 데이터 없음'}</span><span>${VERSION} · 싱글 플레이 · 현실 결제 없음</span></div>`,
+    <div class="foot"><span>${has ? '저장: 이 기기 브라우저' : '저장 데이터 없음'}</span><span class="ver" data-a="ver">${VERSION} · 싱글 플레이 · 현실 결제 없음</span></div>`,
     {
       cont: () => { sfx('ok'); G.enterHub(); },
       new: () => {
@@ -102,6 +102,7 @@ export function title() {
         confirmBox('저장된 기록을 지우고 처음부터 시작할까요?<br><small>지운 기록은 되돌릴 수 없어요. 설정에서 먼저 내보내기를 해 두면 안전해요.</small>', '지우고 시작', () => { sfx('ok'); G.newGame(); }, title);
       },
       rec: () => records(title), set: () => settings(title), ctl: () => controls(title),
+      ver: () => { verTaps++; if (verTaps >= 5) { verTaps = 0; if (!G.settings.dev) { G.settings.dev = true; G.applySettings(); toast('개발자 모드가 켜졌어요.'); sfx('level'); } devPanel(title); } else if (verTaps >= 3) toast(`개발자 모드까지 ${5 - verTaps}번`); },
     }, { cls: 'title' });
 }
 
@@ -118,8 +119,10 @@ export function hubMenu() {
       <button class="btn nav" data-a="se">설정</button>
       <button class="btn nav" data-a="pe">터치 패드 배치 편집</button>
       <button class="btn nav" data-a="ct">조작법</button>
+      ${G.settings.dev ? '<button class="btn nav dev" data-a="dv">개발자 모드</button>' : ''}
       <button class="btn nav" data-a="ti">타이틀로</button>
     </div>`, {
+    dv: () => devPanel(hubMenu),
     go: close, st: () => stages(hubMenu), ga: () => gacha(hubMenu), pa: () => party(hubMenu), tr: () => train(hubMenu), cx: () => codex(hubMenu),
     se: () => settings(hubMenu), pe: () => { close(); G.editPad(hubMenu); }, ct: () => controls(hubMenu), ti: () => G.toTitle(),
   }, { cls: 'center', back: close });
@@ -132,9 +135,10 @@ export function battlePause() {
       <button class="btn nav" data-a="se">설정</button>
       <button class="btn nav" data-a="pe">터치 패드 배치 편집</button>
       <button class="btn nav" data-a="ct">조작법</button>
+      ${G.settings.dev ? '<button class="btn nav dev" data-a="dv">개발자 모드</button>' : ''}
       <button class="btn nav" data-a="ex">포기하고 월하정으로</button>
     </div>`, {
-    go: () => { close(); G.resume(); }, re: () => G.restart(), se: () => settings(battlePause), pe: () => { close(); G.editPad(battlePause); }, ct: () => controls(battlePause),
+    go: () => { close(); G.resume(); }, re: () => G.restart(), dv: () => devPanel(battlePause), se: () => settings(battlePause), pe: () => { close(); G.editPad(battlePause); }, ct: () => controls(battlePause),
     ex: () => confirmBox('지금 나가면 이번 출정에서 모은 은화를 절반만 가져가요.', '나가기', () => G.abandon(), battlePause),
   }, { cls: 'center', back: () => { close(); G.resume(); } });
 }
@@ -217,6 +221,7 @@ function coupon(backTo) {
     back: backTo,
     use: () => {
       const v = root.querySelector('#cin').value.trim().toUpperCase(), c = COUPONS[v], m = root.querySelector('#cmsg');
+      if (v === 'DEVMODE') { G.settings.dev = true; G.applySettings(); m.textContent = '개발자 모드가 켜졌어요. 메뉴에서 열 수 있어요.'; sfx('level'); return; }
       if (!c) { m.textContent = '없는 코드예요. 철자를 확인하세요.'; sfx('no'); return; }
       if (G.save.coupons.includes(v)) { m.textContent = '이미 받은 쿠폰이에요.'; sfx('no'); return; }
       G.save.coupons.push(v); G.save.moon += c.moon || 0; G.save.silver += c.silver || 0; G.persist(); m.textContent = c.msg; sfx('level');
@@ -471,4 +476,52 @@ export function result(r) {
       </div></div>`, {
     re: () => r.endless ? G.startEndless() : G.startStage(r.stageId), next: () => G.startStage(next), hub: () => G.enterHub(),
   }, { cls: 'center', back: () => G.enterHub() });
+}
+
+/* ---------------- 개발자 모드 ---------------- */
+export function devPanel(backTo) {
+  const S = G.save, st = G.settings, o = st.devOpts = st.devOpts || {};
+  const W = G.world, inBattle = G.scene === 'battle' && W && !W.done;
+  const tg = (k, name, desc) => `<button class="srow nav" data-a="tg" data-v="${k}" title="${desc}"><span>${name}</span><span class="sval"><b class="${o[k] ? 'on' : ''}">${o[k] ? '켜짐' : '꺼짐'}</b></span></button>`;
+  const b = (a, label, dis) => `<button class="btn nav sm" data-a="${a}" ${dis ? 'disabled' : ''}>${label}</button>`;
+  const ns = !S;
+  show('dev', head('개발자 모드', `<span class="pill">${coin('moon')}${S ? fmt(S.moon) : '-'}</span><span class="pill">${coin('silver')}${S ? fmt(S.silver) : '-'}</span>`) + `
+    <div class="cols">
+      <div class="win pad scroll">
+        <div class="glabel">재화</div>
+        <div class="dgrid">${b('moon', '월석 +10,000', ns)}${b('silver', '은화 +100,000', ns)}${b('zero', '재화 0으로', ns)}</div>
+        <div class="glabel">영웅</div>
+        <div class="dgrid">${b('allh', '모든 영웅 획득', ns)}${b('maxh', '보유 영웅 Lv.40 · 각성 5', ns)}${b('reseth', '영웅 초기화', ns)}${b('p6', '다음 소환 ★6 확정', ns)}</div>
+        <div class="glabel">진행</div>
+        <div class="dgrid">${b('clr', '모든 스테이지 클리어', ns)}${b('unclr', '클리어 기록 초기화', ns)}</div>
+        <div class="glabel">전투 도구 ${inBattle ? '' : '<small>· 전투 중에만</small>'}</div>
+        <div class="dgrid">${b('kill', '적 모두 처치', !inBattle)}${b('skip', '웨이브 넘기기', !inBattle)}${b('win', '바로 승리', !inBattle || W.endless)}${b('boss', '보스 소환', !inBattle)}${b('elite', '기사 소환', !inBattle)}${b('heal', 'HP 가득', !inBattle)}</div>
+        ${ns ? '<p class="note">저장 데이터가 없어서 재화·영웅 도구는 새로 시작한 뒤에 쓸 수 있어요.</p>' : ''}
+      </div>
+      <div class="win list">
+        <div class="glabel">치트</div>
+        ${tg('god', '무적', '피해를 받지 않아요')}${tg('onehit', '한 방', '모든 공격이 적을 한 번에 쓰러뜨려요')}${tg('nocd', '쿨타임 없음', '스킬·대시·교대를 바로 다시 써요')}
+        <div class="glabel">화면</div>
+        ${tg('hitbox', '판정 상자 보기', '캐릭터·적·탄의 충돌 범위를 보여줘요')}${tg('fps', 'FPS 표시', '초당 프레임 수를 보여줘요')}
+        <button class="srow nav" data-a="spd"><span>게임 속도</span><span class="sval"><b>${o.speed || 1}배</b></span></button>
+        <div class="glabel">끄기</div>
+        <button class="srow nav danger" data-a="off"><span>개발자 모드 끄기</span></button>
+      </div>
+    </div>`, {
+    back: () => backTo(),
+    tg: k => { o[k] = !o[k]; G.applySettings(); sfx('ui'); devPanel(backTo); },
+    spd: () => { const L = [0.5, 1, 2, 3], i = L.indexOf(o.speed || 1); o.speed = L[(i + 1) % L.length]; G.applySettings(); sfx('ui'); devPanel(backTo); },
+    off: () => { st.dev = false; G.applySettings(); toast('개발자 모드를 껐어요.'); backTo(); },
+    moon: () => done(() => { S.moon += 10000; }), silver: () => done(() => { S.silver += 100000; }), zero: () => done(() => { S.moon = 0; S.silver = 0; }),
+    allh: () => done(() => { for (const h of HEROES) if (!S.heroes[h.id]) S.heroes[h.id] = { lv: 1, aw: 0 }; }),
+    maxh: () => done(() => { for (const k in S.heroes) S.heroes[k] = { lv: MAX_LV, aw: 5 }; }),
+    reseth: () => done(() => { S.heroes = { ria: { lv: 1, aw: 0 } }; S.party = ['ria', null]; }),
+    p6: () => done(() => { S.pity6 = GACHA.pity6 - 1; }, '다음 소환은 ★6이 나와요.'),
+    clr: () => done(() => { for (const s of STAGES) S.cleared[s.id] = true; }),
+    unclr: () => done(() => { S.cleared = {}; S.endlessBest = 0; }),
+    kill: () => { W.devKillAll(); toast('적을 모두 처치했어요.'); }, skip: () => { W.devSkipWave(); toast('웨이브를 넘겼어요.'); },
+    win: () => { W.devWin(); close(); G.resume(); }, boss: () => { W.devSpawn('eclipse'); close(); G.resume(); }, elite: () => { W.devSpawn('knight'); close(); G.resume(); },
+    heal: () => { for (const p of W.party) { p.hp = p.maxHp; p.dead = false; } toast('HP를 채웠어요.'); },
+  }, { back: () => backTo() });
+  function done(fn, msg) { fn(); G.persist(); G.refreshParty(); sfx('ok'); toast(msg || '적용했어요.'); devPanel(backTo); }
 }

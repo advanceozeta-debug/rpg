@@ -35,6 +35,7 @@ export class World {
     if (this.mode === 'hub') { this.enemies.push(this.makeEnemy('dummy', 770, 1)); this.waveState = 'none'; }
   }
   get hero() { return this.party[this.active]; }
+  get dev() { return this.settings.dev ? (this.settings.devOpts || {}) : {}; }
   get partner() { return this.party.length > 1 ? this.party[1 - this.active] : null; }
 
   /* ---------- 공용 ---------- */
@@ -73,7 +74,8 @@ export class World {
   dmgOf(h, mul) { return h.atk * mul * (h.buffT > 0 ? 1.4 : 1); }
   damage(e, base, dir, o = {}) {
     if (e.dead) return;
-    const crit = rnd() < .15, d = Math.max(1, Math.round(base * (crit ? 1.8 : 1) * (.9 + rnd() * .2)));
+    const crit = rnd() < .15; let d = Math.max(1, Math.round(base * (crit ? 1.8 : 1) * (.9 + rnd() * .2)));
+    if (this.dev.onehit && e.type !== 'dummy') d = Math.max(d, Math.ceil(e.hp));
     e.hp -= d; e.flash = .1;
     this.num(e.x + (rnd() - .5) * 6, e.y - e.h - 2, d, crit ? '#ffe08a' : '#ffffff', crit);
     this.burst(e.x - dir * 2, e.y - e.h / 2, crit ? 9 : 5, ['#ffffff', '#7fe3ff', '#ffe3a3'], 110, 120, .3);
@@ -109,6 +111,7 @@ export class World {
   hurtHero(d, fromX) {
     const h = this.hero;
     if (!h || h.dead || h.inv > 0 || h.dashT > 0 || this.done) return;
+    if (this.dev.god) { this.num(h.x, h.y - 42, '무적', '#7fe3ff', false); h.inv = .4; return; }
     d = Math.round(d);
     h.hp -= d; this.num(h.x, h.y - 42, d, '#ff6b9a', false);
     h.inv = 1; h.hurtT = .28; h.vx = Math.sign(h.x - fromX || -h.face) * 150; h.vy = -160; h.onGround = false;
@@ -211,6 +214,7 @@ export class World {
   updHero(dt, I) {
     const h = this.hero; if (!h) return;
     this.tagCD -= dt;
+    if (this.dev.nocd) { this.tagCD = 0; for (const p of this.party) { p.cdE = 0; p.cdQ = 0; p.dashCD = 0; } }
     for (const p of this.party) { p.cdE -= dt; p.cdQ -= dt; p.hpLag += (p.hp - p.hpLag) * Math.min(1, dt * 3); }
     if (h.dead) {
       this.deathT -= dt;
@@ -458,6 +462,12 @@ export class World {
     if (!this.spawnQ.some(t => ENEMIES[t].boss)) this.say('WAVE ' + this.wave + (this.endless ? '' : ' / ' + this.waves.length), this.endless ? '무한 회랑' : '', 1.3);
   }
 
+  /* ---------- 개발자 도구 ---------- */
+  devKillAll() { for (const e of this.enemies) if (e.type !== 'dummy' && !e.dead) { e.hp = 0; this.kill(e); } this.enemies = this.enemies.filter(e => !e.dead); }
+  devSkipWave() { this.spawnQ = []; this.devKillAll(); }
+  devWin() { if (this.endless || this.mode !== 'battle') return; this.wave = this.waves.length; this.waveState = 'fight'; this.devSkipWave(); }
+  devSpawn(type) { if (this.mode === 'battle') { if (this.waveState === 'intro') this.startWave(); this.spawn(type); } }
+
   /* ---------- 그리기 ---------- */
   draw(L, Hc, sc) {
     const cam = Math.round(this.cam), sx = this.sx, sy = this.sy, bg = this.bg;
@@ -506,6 +516,14 @@ export class World {
     Hc.setTransform(sc, 0, 0, sc, 0, 0);
     Hc.clearRect(0, 0, VW, VH);
     if (this.mode === 'hub' && !this.hideLabels) this.drawStations(Hc, X);
+    if (this.dev.hitbox) {
+      Hc.lineWidth = .5;
+      const box = (b, col) => { Hc.strokeStyle = col; Hc.strokeRect(X(b[0]), Y(b[1]), b[2] - b[0], b[3] - b[1]); };
+      for (const e of this.enemies) box(this.box(e), '#ff4d6d');
+      if (this.hero && !this.hero.dead) box(this.heroBox(), '#7dffb4');
+      for (const s of this.shots) box([s.x - s.w, s.y - s.h, s.x + s.w, s.y + s.h], s.team === 1 ? '#7fe3ff' : '#ffb347');
+      for (const p of this.plats) { Hc.strokeStyle = '#ffd36b'; Hc.beginPath(); Hc.moveTo(X(p.x), Y(p.y)); Hc.lineTo(X(p.x + p.w), Y(p.y)); Hc.stroke(); }
+    }
     for (const n of this.nums) { Hc.globalAlpha = clamp(n.t * 3, 0, 1); txt(Hc, String(n.v), X(n.x), Y(n.y), { size: n.big ? 9 : 6.5, col: n.col, align: 'center', font: 'p' }); }
     Hc.globalAlpha = 1;
   }

@@ -1,7 +1,7 @@
 // 월하검무 — 시작점
 import { VW, VH, STAGE, STAGES, HERO, GACHA } from './data.js';
 import * as Art from './art.js';
-import { World } from './world.js';
+import { World, txt } from './world.js';
 import { drawHud } from './hud.js';
 import { Input, bindKeyboard, bindPad, consume, clearInput, applyPad, bindPadEditor, paintBar } from './input.js';
 import { initAudio, sfx, playBgm, setVolumes } from './audio.js';
@@ -138,6 +138,10 @@ function finish(win, run) {
 const EMPTY = { held: {}, pressed: {} };
 bindKeyboard(e => {
   initAudio();
+  if (e.code === 'Backquote' && G.settings.dev && G.scene !== 'title') {
+    if (UI.current() === 'dev') return UI.onKey({ code: 'Escape', target: e.target });
+    clearInput(); if (G.scene === 'battle') { G.paused = true; UI.devPanel(UI.battlePause); } else UI.devPanel(UI.close); return true;
+  }
   if (UI.isOpen()) return UI.onKey(e);
   if (e.code === 'Escape' || e.code === 'KeyP') { openMenu(); return true; }
   if (G.scene === 'hub' && e.code === 'KeyF' && !G.world.near) return false;
@@ -153,9 +157,11 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && G.s
 
 /* ---------- 루프 ---------- */
 UI.initUI($('#ui'), G);
-let last = performance.now();
+let last = performance.now(), fpsAcc = 60;
 function loop(t) {
-  const dt = Math.min(1 / 30, (t - last) / 1000); last = t;
+  const raw = Math.min(1 / 30, (t - last) / 1000); last = t;
+  const D = G.settings.dev ? (G.settings.devOpts || {}) : {}, dt = raw * (D.speed || 1);
+  fpsAcc = fpsAcc * .9 + (raw > 0 ? 1 / raw : 60) * .1;
   const W = G.world;
   if (W) {
     const blocked = UI.isOpen() || G.scene === 'title';
@@ -164,6 +170,8 @@ function loop(t) {
     W.draw(L, Hc, sc);
     W.hideLabels = G.scene === 'title';
     if (G.scene !== 'title' && !UI.isOpen()) drawHud(Hc, W, G.save);
+    if (D.fps) txt(Hc, Math.round(fpsAcc) + ' FPS' + ((D.speed || 1) !== 1 ? ' · ' + D.speed + 'x' : ''), 4, 172, { size: 5, col: '#7dffb4', font: 'p' });
+    if (G.settings.dev && G.scene !== 'title' && !UI.isOpen()) txt(Hc, 'DEV', 160, 13, { size: 4.5, col: '#ff9be8', align: 'center', font: 'p' });
   }
   consume();
   requestAnimationFrame(loop);
