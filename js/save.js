@@ -5,7 +5,7 @@ export function newSave() {
   return {
     v: 1, moon: 1600, silver: 600,
     heroes: { ria: { lv: 1, aw: 0 } }, party: ['ria', null],
-    cleared: {}, endlessBest: 0, pulls: 0, pity5: 0, pity4: 0, kills: 0, coupons: [],
+    cleared: {}, endlessBest: 0, pulls: 0, pity6: 0, pity5: 0, pity4: 0, kills: 0, coupons: [],
     created: Date.now(),
   };
 }

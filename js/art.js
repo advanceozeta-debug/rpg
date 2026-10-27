@@ -41,8 +41,9 @@ function fullPal(def) {
   const p = def.pal;
   return palCache[def.id] = {
     ...p, hairS: shade(p.hair, .8), hairD: shade(p.hair, .6), hairL: shade(p.hair, 1.35),
-    coatS: shade(p.coat, .68), coatL: shade(p.coat, 1.25), eyeD: shade(p.eye, .55),
-    skin: '#fbe1d0', skinS: '#eab59f', leg: '#e7e1f6', boot: '#2a2140', blush: '#f59bb0',
+    coatS: shade(p.coat, .68), coatL: shade(p.coat, 1.25), eyeD: shade(p.eye, .55), eyeL: shade(p.eye, 1.4),
+    skin: '#fbe1d0', skinS: '#eab59f', leg: '#e7e1f6', boot: '#3a2a3a', bootD: '#221826', bootL: '#5a4656', blush: '#f59bb0',
+    pants: '#2a2440', pantsS: '#1e1a30', glove: '#2e2638', belt: '#5a3a2a', shirt: '#e4e2f2', legS: '#c4bcdc', lining: shade(p.acc, .6),
   };
 }
 function weaponPose(h, wp) {
@@ -62,90 +63,128 @@ function weaponPose(h, wp) {
   return { a: { bow: .9, staff: -1.35, spear: -1.1, greatsword: .95, daggers: .9, sword: .75 }[wp], ext: 0 };
 }
 function drawWeapon(wp, hx, hy, a, P, pose) {
-  const pa = a + Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a);
+  const pa = a + Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a), cp = Math.cos(pa), sp = Math.sin(pa);
+  const at = (d, o = 0) => [hx + ca * d + cp * o, hy + sa * d + sp * o];
+  const seg = (d0, len, o, col) => { const [x, y] = at(d0, o); line(x, y, a, len, col); };
   if (wp === 'sword') {
-    line(hx - ca * 2, hy - sa * 2, a, 3, '#6a4a2a');
-    R(Math.round(hx + Math.cos(pa) * 2), Math.round(hy + Math.sin(pa) * 2), 1, 1, P.trim);
-    R(Math.round(hx - Math.cos(pa) * 2), Math.round(hy - Math.sin(pa) * 2), 1, 1, P.trim);
-    R(hx, hy, 1, 1, P.trim);
-    line(hx + ca * 2, hy + sa * 2, a, 13, '#e4f7ff');
-    line(hx + ca * 2 + Math.cos(pa), hy + sa * 2 + Math.sin(pa), a, 11, P.acc);
+    seg(-4, 4, 0, '#5a3a22'); seg(-4, 4, 1, '#7a5532');
+    for (let k = -3; k <= 3; k++) { const [x, y] = at(1, k); R(Math.round(x), Math.round(y), 1, 1, Math.abs(k) === 3 ? P.acc : P.trim); }
+    seg(2, 19, -1, '#9fb0cf'); seg(2, 20, 0, '#e8f4ff'); seg(2, 18, 1, P.acc);
+    const [tx, ty] = at(22); R(Math.round(tx), Math.round(ty), 1, 1, '#ffffff');
   } else if (wp === 'greatsword') {
-    line(hx - ca * 4, hy - sa * 4, a, 5, '#4a3320');
-    for (let k = -3; k <= 3; k++) R(Math.round(hx + ca * 1 + Math.cos(pa) * k), Math.round(hy + sa * 1 + Math.sin(pa) * k), 1, 1, P.trim);
-    for (let k = -1; k <= 1; k++) line(hx + ca * 2 + Math.cos(pa) * k, hy + sa * 2 + Math.sin(pa) * k, a, 18, k === 0 ? P.acc : '#d6dcf2');
-    line(hx + ca * 2 - Math.cos(pa), hy + sa * 2 - Math.sin(pa), a, 18, '#ffffff');
+    seg(-6, 7, 0, '#4a3320'); seg(-6, 7, 1, '#6b4a2a');
+    for (let k = -4; k <= 4; k++) for (let j = 0; j < 2; j++) { const [x, y] = at(1 + j, k); R(Math.round(x), Math.round(y), 1, 1, P.trim); }
+    for (let k = -2; k <= 2; k++) seg(3, 25 - Math.abs(k), k, k === 0 ? P.acc : k < 0 ? '#ffffff' : '#b8c2de');
+    const [gx, gy] = at(2, 0); R(Math.round(gx), Math.round(gy), 2, 2, P.acc);
   } else if (wp === 'spear') {
-    line(hx - ca * 9, hy - sa * 9, a, 26, '#7a5532');
-    line(hx + ca * 17, hy + sa * 17, a, 5, '#e4f0ff');
-    line(hx + ca * 17 + Math.cos(pa), hy + sa * 17 + Math.sin(pa), a, 3, '#ffffff');
-    R(Math.round(hx + ca * 15 - Math.cos(pa)), Math.round(hy + sa * 15 - Math.sin(pa)), 2, 2, P.acc);
-    R(Math.round(hx + ca * 14 - Math.cos(pa) * 2), Math.round(hy + sa * 14 - Math.sin(pa) * 2 + 1), 1, 2, P.acc);
+    seg(-14, 38, 0, '#6b4a2a'); seg(-14, 36, 1, '#8a6238');
+    for (let k = 0; k < 3; k++) { const [x, y] = at(-14 + k * 12); R(Math.round(x), Math.round(y), 1, 1, P.trim); }
+    seg(24, 7, -1, '#cfdcf0'); seg(23, 9, 0, '#ffffff'); seg(24, 7, 1, '#9fb0cf');
+    const [x1, y1] = at(22, -2); R(Math.round(x1), Math.round(y1), 2, 2, P.trim);
+    const [x2, y2] = at(21, 2); R(Math.round(x2), Math.round(y2), 2, 3, P.acc); R(Math.round(x2), Math.round(y2) + 3, 1, 2, P.acc);
   } else if (wp === 'daggers') {
-    R(hx, hy, 1, 1, P.trim);
-    line(hx + ca, hy + sa, a, 6, '#e4f7ff'); line(hx + ca + Math.cos(pa), hy + sa + Math.sin(pa), a, 5, P.acc);
+    seg(-2, 3, 0, '#4a3320'); { const [x, y] = at(1, -1); R(Math.round(x), Math.round(y), 1, 3, P.trim); }
+    seg(2, 9, 0, '#ffffff'); seg(2, 8, 1, P.acc); seg(2, 7, -1, '#9fb0cf');
   } else if (wp === 'bow') {
-    const aim = pose && pose.draw ? -2 : 0;
-    for (let i = -8; i <= 8; i++) {
-      const t = i / 8, bend = (1 - t * t) * 3;
-      R(Math.round(hx + ca * bend + Math.cos(pa) * i), Math.round(hy + sa * bend + Math.sin(pa) * i), 1, 1, i % 4 === 0 ? P.trim : '#8a5a3a');
-    }
-    const ex1x = hx + Math.cos(pa) * 8, ex1y = hy + Math.sin(pa) * 8, ex2x = hx - Math.cos(pa) * 8, ex2y = hy - Math.sin(pa) * 8;
-    const mx = hx + ca * aim, my = hy + sa * aim;
-    for (let k = 0; k <= 8; k++) { R(Math.round(ex1x + (mx - ex1x) * k / 8), Math.round(ex1y + (my - ex1y) * k / 8), 1, 1, '#e8e2ff'); R(Math.round(ex2x + (mx - ex2x) * k / 8), Math.round(ex2y + (my - ex2y) * k / 8), 1, 1, '#e8e2ff'); }
-    if (pose && pose.draw) line(mx, my, a, 11, '#cfd6ee');
+    const pull = pose && pose.draw ? -3 : 0;
+    for (let i = -12; i <= 12; i++) { const t = i / 12, bend = (1 - t * t) * 4; const [x, y] = at(bend, i); R(Math.round(x), Math.round(y), 1, 1, Math.abs(i) < 2 ? P.trim : '#7a4e2e'); const [x2, y2] = at(bend + 1, i); if (Math.abs(i) < 11) R(Math.round(x2), Math.round(y2), 1, 1, '#a8774a'); }
+    const [e1x, e1y] = at(0, 12), [e2x, e2y] = at(0, -12), [mx, my] = at(pull, 0);
+    for (let k = 0; k <= 12; k++) { R(Math.round(e1x + (mx - e1x) * k / 12), Math.round(e1y + (my - e1y) * k / 12), 1, 1, '#ece6ff'); R(Math.round(e2x + (mx - e2x) * k / 12), Math.round(e2y + (my - e2y) * k / 12), 1, 1, '#ece6ff'); }
+    if (pose && pose.draw) { line(mx, my, a, 16, '#d6dcf0'); const [hx2, hy2] = at(pull + 16); R(Math.round(hx2), Math.round(hy2) - 1, 2, 3, P.acc); }
   } else if (wp === 'staff') {
-    line(hx - ca * 6, hy - sa * 6, a, 20, '#7a5532');
-    line(hx - ca * 6 + Math.cos(pa), hy - sa * 6 + Math.sin(pa), a, 18, '#9a7046');
-    const ox = Math.round(hx + ca * 15), oy = Math.round(hy + sa * 15);
-    R(ox - 2, oy - 2, 4, 4, P.acc); R(ox - 1, oy - 1, 2, 2, '#ffffff'); R(ox - 3, oy - 1, 1, 2, P.trim); R(ox + 2, oy - 1, 1, 2, P.trim);
+    seg(-9, 28, 0, '#6b4a2a'); seg(-9, 26, 1, '#9a7046');
+    const [ox, oy] = at(21); const X = Math.round(ox), Y = Math.round(oy);
+    R(X - 4, Y - 1, 1, 3, P.trim); R(X + 3, Y - 1, 1, 3, P.trim); R(X - 1, Y + 3, 3, 1, P.trim);
+    R(X - 3, Y - 3, 6, 6, P.acc); R(X - 2, Y - 4, 4, 8, P.acc); R(X - 2, Y - 2, 3, 3, '#ffffff'); R(X + 1, Y + 1, 1, 1, shade(P.acc, .7));
   }
 }
 export function heroArt(h) {
-  const def = h.def, P = fullPal(def), wp = def.weapon;
+  const def = h.def, P = fullPal(def), wp = def.weapon, longCoat = !(wp === 'daggers' || wp === 'bow');
   return () => {
-    const s = h.state, t = h.anim; let bob = 0, lo = 0, hs = 0, lift = 0;
-    if (s === 'run') { const f = Math.floor(t * 12) % 4; lo = [2, 0, -2, 0][f]; bob = f % 2 ? -1 : 0; hs = [0, 1, 2, 1][f]; }
-    else if (s === 'idle') { bob = Math.floor(t * 2.4) % 2 ? -1 : 0; hs = bob ? 1 : 0; }
-    else if (s === 'jump') { lo = 1; lift = 1; hs = -1; } else if (s === 'fall') { lo = -1; hs = 3; }
-    else if (s === 'dash') { lo = 3; hs = 4; } else if (s === 'attack' || s === 'skill' || s === 'spin') { lo = 2; hs = 2; } else if (s === 'hurt') { lo = -1; hs = 3; }
-    const y = bob, st = P.style;
-    // 뒷머리
-    if (st === 'long') { R(-9 - hs, -25 + y, 5, 11, P.hair); R(-10 - hs, -17 + y, 4, 5, P.hairS); R(-9 - hs, -13 + y, 2, 3, P.hairD); R(-6 - hs, -26 + y, 3, 2, P.hairS); R(-11 - hs, -24 + y, 2, 2, P.acc); R(-12 - hs, -22 + y, 1, 3, P.acc); }
-    else if (st === 'pony') { R(-8, -27 + y, 3, 3, P.acc); R(-11 - hs, -27 + y, 4, 3, P.hair); R(-13 - hs, -25 + y, 3, 6, P.hair); R(-14 - hs, -20 + y, 2, 4, P.hairS); R(-13 - hs, -17 + y, 1, 2, P.hairD); }
-    else if (st === 'twin') { R(-9 - hs, -25 + y, 3, 10, P.hair); R(-10 - hs, -17 + y, 2, 4, P.hairS); R(-8, -27 + y, 2, 2, P.acc); }
-    else if (st === 'bob') { R(-7, -26 + y, 3, 9, P.hairS); R(-8 - (hs > 2 ? 1 : 0), -20 + y, 2, 3, P.hairD); }
-    else { R(-7, -26 + y, 3, 7, P.hairS); }
-    // 다리
-    R(-3 - lo, -7 - lift, 2, 6, P.coatS); R(-4 - lo, -2 - lift, 3, 2, P.boot);
-    R(1 + lo, -7 - lift, 2, 6, P.leg); R(1 + lo, -2 - lift, 3, 2, P.boot); R(3 + lo, -2 - lift, 1, 1, P.trim);
-    // 몸
-    R(-5, -10 + y, 10, 3, P.coat); R(-6 - (hs > 2 ? 1 : 0), -9 + y, 2, 3, P.coatS); R(-5, -8 + y, 10, 1, P.coatS);
-    R(-5, -15 + y, 2, 5, P.coatS);
-    R(-4, -16 + y, 8, 7, P.coat); R(-1, -16 + y, 3, 6, '#f3f2fb'); R(-4, -11 + y, 8, 1, P.trim); R(0, -11 + y, 1, 1, '#fff6c8');
-    R(-3, -16 + y, 6, 1, '#f3f2fb'); R(1, -15 + y, 2, 2, P.acc);
-    // 쌍단검 뒷손
-    if (wp === 'daggers') { const a2 = (s === 'attack' ? weaponPose(h, wp).a + 2.4 : 1.1); R(-4, -13 + y, 2, 2, P.skin); line(-4 + Math.cos(a2) * 2, -12 + y + Math.sin(a2) * 2, a2, 5, '#e4f7ff'); }
-    // 머리
-    R(-5, -26 + y, 10, 10, P.skin); R(-5, -17 + y, 10, 1, P.skinS);
-    R(-6, -28 + y, 12, 4, P.hair); R(-6, -24 + y, 2, 7, P.hair); R(-7, -27 + y, 2, 4, P.hairS); R(-4, -29 + y, 7, 1, P.hair); R(-2, -29 + y, 3, 1, P.hairL);
-    R(-1, -24 + y, 5, 2, P.hair); R(3, -24 + y, 3, 5, P.hair); R(4, -20 + y, 1, 2, P.hairS); R(0, -22 + y, 1, 1, P.hair); R(-4, -24 + y, 1, 2, P.hairS);
-    if (st === 'twin') { R(5, -25 + y, 3, 3, P.acc); R(6, -22 + y, 2, 7, P.hair); R(7, -16 + y, 1, 2, P.hairS); }
-    if (st === 'bob') { R(4, -23 + y, 3, 6, P.hair); R(-6, -18 + y, 2, 2, P.hair); }
-    if (st === 'long') R(-7, -28 + y, 3, 2, P.acc);
-    if (st === 'short') { R(4, -28 + y, 2, 2, P.hairS); R(-6, -29 + y, 2, 1, P.hairS); }
-    // 얼굴
-    const blink = (s === 'idle' || s === 'run') && (t % 3.2) > 3.05;
-    if (s === 'hurt') { R(1, -20 + y, 2, 1, OL); R(-3, -20 + y, 2, 1, OL); R(1, -21 + y, 1, 1, OL); R(-2, -21 + y, 1, 1, OL); }
-    else if (blink) { R(1, -19 + y, 2, 1, P.eyeD); R(-3, -19 + y, 2, 1, P.eyeD); }
-    else { for (const ex of [1, -3]) { R(ex, -21 + y, 2, 1, OL); R(ex, -20 + y, 2, 3, P.eye); R(ex, -20 + y, 2, 1, P.eyeD); R(ex + 1, -19 + y, 1, 1, '#ffffff'); } }
-    R(-3, -17 + y, 1, 1, P.blush); R(3, -17 + y, 1, 1, P.blush); R(0, -17 + y, 1, 1, '#c47483');
-    // 팔 + 무기
+    const s = h.state, t = h.anim || 0;
+    let bob = 0, lo = 0, fl = 0, lift = 0, lean = 0;
+    if (s === 'run') { const f = Math.floor(t * 12) % 4; lo = [3, 1, -3, -1][f]; bob = f % 2 ? -1 : 0; fl = [2, 3, 4, 3][f]; lean = 1; }
+    else if (s === 'idle') { const f = Math.floor(t * 2.2) % 2; bob = f ? -1 : 0; fl = f; }
+    else if (s === 'jump') { lo = 2; lift = 2; fl = -1; } else if (s === 'fall') { lo = -1; fl = 5; }
+    else if (s === 'dash') { lo = 4; fl = 6; lean = 2; } else if (s === 'attack' || s === 'skill' || s === 'spin') { lo = 3; fl = 3; lean = 1; } else if (s === 'hurt') { lo = -2; fl = 5; lean = -1; }
+    const y = bob, st = P.style, H = P.hair, HS = P.hairS, HD = P.hairD, HL = P.hairL, C = P.coat, CS = P.coatS, CL = P.coatL, CD = shade(P.coat, .48);
+    const wave = Math.floor(t * 6) % 2;
+    // ── 뒷머리 (볼륨)
+    R(-9, -44 + y, 6, 12, HS); R(-10 - (fl > 3 ? 1 : 0), -40 + y, 3, 8, HD);
+    if (st === 'long') {
+      R(-11 - fl, -40 + y, 7, 12, HS); R(-12 - fl, -30 + y, 7, 8, HS); R(-14 - fl, -24 + y, 6, 6, HD); R(-15 - fl - wave, -19 + y, 4, 3, HD); R(-12 - fl, -38 + y, 2, 14, H); R(-9 - fl, -30 + y, 2, 8, H); R(-16 - fl - wave, -17 + y, 2, 2, HD);
+    } else if (st === 'pony') {
+      R(-10, -45 + y, 4, 4, P.acc); R(-15 - fl, -45 + y, 7, 4, H); R(-18 - fl, -42 + y, 6, 8, H); R(-19 - fl - wave, -35 + y, 5, 7, HS); R(-19 - fl - wave, -29 + y, 3, 4, HD); R(-16 - fl, -44 + y, 3, 1, HL); R(-17 - fl, -40 + y, 2, 5, HS);
+    } else if (st === 'twin') {
+      R(-13 - fl, -42 + y, 5, 16, HS); R(-14 - fl - wave, -27 + y, 4, 6, HD); R(-12 - fl, -40 + y, 2, 12, H); R(-10, -45 + y, 3, 3, P.acc);
+    } else if (st === 'bob') { R(-10, -42 + y, 7, 14, HS); R(-11 - (fl > 2 ? 1 : 0), -31 + y, 5, 4, HD); R(-9, -40 + y, 2, 10, H); }
+    else { R(-10, -44 + y, 5, 10, HS); R(-11, -37 + y, 3, 4, HD); R(-12, -42 + y, 2, 2, HS); }
+    // ── 뒷옷자락
+    if (longCoat) {
+      R(-9 - fl, -18 + y, 7, 9, CS); R(-11 - fl, -11 + y, 7, 5, CS); R(-13 - fl - wave, -7 + y, 6, 2, CD); R(-12 - fl, -5 + y, 2, 1, CD); R(-9 - fl, -18 + y, 1, 10, CD);
+      R(-10 - fl, -12 + y, 1, 5, P.lining);
+    } else { R(-8 - (fl > 3 ? 1 : 0), -18 + y, 4, 6, CS); }
+    // ── 뒷팔
+    R(-7, -27 + y, 3, 8, CS); R(-7, -27 + y, 3, 1, CD); R(-7, -20 + y, 3, 3, P.glove);
+    // ── 다리
+    const legB = -3 - lo, legF = 1 + lo;
+    R(legB, -16 - lift, 3, 9, P.pantsS); R(legB - 1, -9 - lift, 4, 8, P.boot); R(legB - 1, -2 - lift, 5, 2, P.bootD); R(legB - 1, -9 - lift, 4, 1, P.bootD);
+    R(legF, -16 - lift, 3, 9, longCoat ? P.pants : P.leg); R(legF + 2, -16 - lift, 1, 9, longCoat ? P.pantsS : P.legS);
+    R(legF - 1, -9 - lift, 4, 8, P.boot); R(legF - 1, -2 - lift, 5, 2, P.bootD); R(legF, -8 - lift, 1, 5, P.bootL); R(legF - 1, -9 - lift, 4, 1, P.trim);
+    // ── 몸통
+    const ty = -29 + y, lx = lean;
+    R(-5 + lx, ty, 10, 12, C); R(-5 + lx, ty, 2, 12, CS); R(3 + lx, ty + 1, 2, 9, CL);
+    R(-1 + lx, ty, 3, 8, P.shirt); R(0 + lx, ty, 1, 8, '#ffffff'); R(0 + lx, ty + 3, 1, 1, P.acc);
+    R(-2 + lx, ty, 1, 9, P.trim); R(2 + lx, ty, 1, 9, P.trim); R(-3 + lx, ty + 2, 1, 1, CL); R(3 + lx, ty + 6, 1, 1, CS);
+    R(-3 + lx, ty - 1, 7, 2, '#f3f2fb'); R(-3 + lx, ty, 1, 2, '#c9c6dc');
+    // 어깨 장식 + 브로치
+    R(2 + lx, ty, 5, 3, P.trim); R(3 + lx, ty + 1, 4, 2, CL); R(3 + lx, ty + 3, 3, 1, CS); R(2 + lx, ty + 3, 1, 1, P.trim);
+    R(-1 + lx, ty + 1, 2, 2, P.acc); R(-1 + lx, ty + 1, 1, 1, '#ffffff');
+    // 벨트
+    R(-6 + lx, ty + 9, 12, 2, P.belt); R(-6 + lx, ty + 9, 12, 1, shade(P.belt, 1.3)); R(0 + lx, ty + 9, 3, 2, P.trim); R(1 + lx, ty + 9, 1, 1, P.belt);
+    R(-5 + lx, ty + 4, 1, 5, P.belt); // 사선 멜빵
+    // ── 앞자락
+    if (longCoat) {
+      R(-7, -17 + y, 6, 6, C); R(-8, -11 + y, 6, 4, C); R(-9 - (fl > 3 ? 1 : 0), -7 + y, 6, 2, C); R(-8, -17 + y, 1, 9, CS); R(-9, -8 + y, 2, 3, CS);
+      R(-9 - (fl > 3 ? 1 : 0), -5 + y, 6, 1, P.trim); R(-3, -16 + y, 1, 10, P.trim);
+      R(-6, -14 + y, 1, 4, CS); R(-5, -10 + y, 1, 3, CS);
+      R(4, -17 + y, 4, 5, C); R(5, -12 + y, 4, 3, C); R(6, -9 + y, 3 + wave, 2, C); R(7, -17 + y, 1, 7, CS); R(6, -7 + y, 3 + wave, 1, P.trim); R(4, -16 + y, 1, 8, P.lining);
+    } else {
+      R(-6, -17 + y, 13, 3, C); R(-7, -14 + y, 15, 2, C); R(-7, -12 + y, 15, 1, P.trim); R(-6, -17 + y, 2, 5, CS); R(-2, -14 + y, 1, 2, CS); R(3, -14 + y, 1, 2, CS);
+    }
+    // ── 목·얼굴 (둥글게)
+    R(0, -31 + y, 3, 3, P.skinS);
+    R(-4, -41 + y, 11, 10, P.skin); R(-5, -39 + y, 1, 6, P.skin); R(-3, -31 + y, 9, 1, P.skin); R(-2, -30 + y, 6, 1, P.skinS); R(6, -31 + y, 1, 1, P.skinS);
+    R(-4, -33 + y, 1, 2, P.skinS);
+    // 눈
+    const blink = (s === 'idle' || s === 'run') && (t % 3.4) > 3.25;
+    if (s === 'hurt') { R(2, -35 + y, 4, 1, OL); R(3, -36 + y, 1, 1, OL); R(5, -34 + y, 1, 1, OL); R(-2, -35 + y, 2, 1, OL); }
+    else if (blink) { R(2, -34 + y, 4, 1, P.eyeD); R(-2, -34 + y, 2, 1, P.eyeD); }
+    else {
+      R(1, -38 + y, 6, 1, OL); R(2, -37 + y, 4, 5, P.eye); R(2, -37 + y, 4, 1, OL); R(2, -36 + y, 4, 1, P.eyeD); R(4, -35 + y, 2, 1, P.eyeD); R(2, -35 + y, 1, 1, '#ffffff'); R(3, -34 + y, 1, 1, '#ffffff'); R(2, -33 + y, 4, 1, P.eyeL); R(6, -37 + y, 1, 3, OL);
+      R(-2, -38 + y, 3, 1, OL); R(-2, -37 + y, 2, 5, P.eye); R(-2, -37 + y, 2, 1, OL); R(-2, -36 + y, 2, 1, P.eyeD); R(-2, -35 + y, 1, 1, '#ffffff'); R(-2, -33 + y, 2, 1, P.eyeL);
+    }
+    R(1, -39 + y, 1, 1, HS);
+    R(4, -31 + y, 2, 1, s === 'attack' || s === 'skill' ? '#a8455a' : '#d07a8a');
+    R(-3, -32 + y, 2, 1, P.blush); R(6, -32 + y, 1, 1, P.blush);
+    // ── 앞머리 (뾰족한 가닥)
+    R(-3, -48 + y, 8, 1, H); R(-5, -47 + y, 12, 1, H); R(-6, -46 + y, 14, 5, H); R(-7, -44 + y, 2, 6, H);
+    R(0, -49 + y, 2, 1, H); R(4, -49 + y, 1, 1, H); R(-4, -48 + y, 1, 1, HS);
+    const bang = [[-5, 7, HS], [-4, 5, H], [-3, 8, H], [-2, 2, HS], [-1, 3, H], [0, 3, H], [1, 4, H], [2, 2, HS], [3, 3, H], [4, 2, H], [5, 3, H], [6, 10, H], [7, 9, HS]];
+    for (const [bx, len, col] of bang) { R(bx, -41 + y, 1, len, col); R(bx, -41 + y + len - 1, 1, 1, col === H ? HS : HD); }
+    R(-2, -46 + y, 6, 1, HL); R(-1, -47 + y, 3, 1, HL); R(4, -45 + y, 2, 1, HL); R(-5, -44 + y, 2, 1, HS); R(1, -43 + y, 4, 1, HS); R(-3, -42 + y, 2, 1, HS);
+    if (st === 'twin') { R(7, -46 + y, 3, 3, P.acc); R(8, -43 + y, 3, 14, H); R(10, -43 + y, 1, 12, HS); R(9, -29 + y, 2, 3, HS); }
+    if (st === 'bob') { R(7, -42 + y, 2, 12, H); R(8, -32 + y, 1, 2, HS); R(-7, -38 + y, 2, 8, H); }
+    if (st === 'long') { R(-9, -46 + y, 3, 2, P.acc); R(-8, -44 + y, 1, 1, '#ffffff'); R(7, -36 + y, 2, 9, H); R(8, -28 + y, 1, 2, HS); }
+    if (st === 'short') { R(6, -48 + y, 3, 2, H); R(8, -47 + y, 2, 2, HS); R(-7, -48 + y, 3, 2, H); R(-9, -46 + y, 2, 2, HS); R(1, -50 + y, 2, 1, H); }
+    if (st === 'pony') R(-8, -46 + y, 2, 3, P.acc);
+    // ── 앞팔 + 무기
     const pose = weaponPose(h, wp), a = pose.a;
-    const sx0 = 1, sy0 = -14 + y;
-    const hx = Math.round(sx0 + Math.cos(a) * 4 + (pose.ext || 0)), hy = Math.round(sy0 + Math.sin(a) * 4);
-    line(sx0, sy0, Math.atan2(hy - sy0, hx - sx0), Math.max(3, Math.round(Math.hypot(hx - sx0, hy - sy0))), P.coat, 2);
-    R(hx, hy, 2, 2, P.skin);
+    const sx0 = 3 + lx, sy0 = -26 + y;
+    const hx = Math.round(sx0 + Math.cos(a) * 6 + (pose.ext || 0)), hy = Math.round(sy0 + Math.sin(a) * 6);
+    const ang = Math.atan2(hy - sy0, hx - sx0), len = Math.max(4, Math.round(Math.hypot(hx - sx0, hy - sy0)));
+    line(sx0, sy0, ang, len, CS, 3); line(sx0, sy0, ang, len - 1, C, 2);
+    R(hx - 1, hy - 1, 3, 3, P.glove); R(hx - 1, hy - 1, 1, 1, shade(P.glove, 1.5));
     drawWeapon(wp, hx, hy, a, P, pose);
   };
 }
@@ -239,11 +278,45 @@ const imgCache = {};
 function fakeHero(id, state = 'idle') { return { def: HERO[id], state, anim: .2, atkT: 0, atkDur: 1, step: null }; }
 export function heroCanvas(id, kind = 'full') {
   const key = id + kind; if (imgCache[key]) return imgCache[key];
-  const k = kind === 'face' ? mk(18, 18) : mk(44, 46);
+  const def = HERO[id], big = def.img && IMG[def.img + '_72'];
+  const k = kind === 'face' ? mk(22, 22) : mk(64, 56);
   const x = k.getContext('2d'); x.imageSmoothingEnabled = false;
-  if (kind === 'face') blit(x, heroArt(fakeHero(id)), 9, 30, 1);
-  else blit(x, heroArt(fakeHero(id)), 20, 42, 1);
+  if (big && kind === 'face') { x.drawImage(big, 33, 1, 30, 30, 0, 0, 22, 22); return imgCache[key] = k; }
+  if (kind === 'face') drawHero(x, fakeHero(id), 10, 52, 1);
+  else drawHero(x, fakeHero(id), 34, 53, 1);
   return imgCache[key] = k;
+}
+
+/* ---------- 그림 파일로 된 영웅 ---------- */
+export const IMG = {};
+export function loadImages(names) {
+  return Promise.all(names.map(n => new Promise(res => { const i = new Image(); i.onload = () => { IMG[n] = i; res(); }; i.onerror = () => res(); i.src = 'assets/heroes/' + n + '.png'; })));
+}
+const varCache = {};
+function imgVariant(img, name, flip, tintCol) {
+  const key = name + (flip ? 'f' : '') + (tintCol || ''); if (varCache[key]) return varCache[key];
+  const k = mk(img.width, img.height), x = k.getContext('2d');
+  if (flip) { x.translate(img.width, 0); x.scale(-1, 1); }
+  x.drawImage(img, 0, 0);
+  if (tintCol) { x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = tintCol; x.fillRect(0, 0, k.width, k.height); }
+  return varCache[key] = k;
+}
+export function drawHero(t, h, x, y, face, o = {}) {
+  const d = h.def, img = d.img && IMG[d.img + '_44'];
+  if (!img) return blit(t, heroArt(h), x, y, face, o);
+  const s = h.state, a = h.anim || 0;
+  let bx = 0, by = 0;
+  if (s === 'idle') by = Math.floor(a * 2.4) % 2 ? -1 : 0;
+  else if (s === 'run') { const f = Math.floor(a * 12) % 4; by = f % 2 ? -1 : 0; bx = f === 1 ? 1 : 0; }
+  else if (s === 'attack' || s === 'skill' || s === 'dash') bx = 2;
+  else if (s === 'hurt') bx = -2;
+  else if (s === 'jump') by = -1;
+  const flip = face < 0, v = imgVariant(img, d.img, flip, o.tint || (o.flash ? '#ffffff' : null));
+  const ax = flip ? img.width - d.anchor[0] : d.anchor[0];
+  t.globalAlpha = o.alpha ?? 1;
+  t.drawImage(v, Math.round(x - ax + bx * face), Math.round(y - img.height + 1 + by));
+  if (s === 'hurt' && !o.tint) { t.globalAlpha = .45; t.drawImage(imgVariant(img, d.img, flip, '#ff4d6d'), Math.round(x - ax + bx * face), Math.round(y - img.height + 1 + by)); }
+  t.globalAlpha = 1;
 }
 export function heroURL(id, kind) { const key = 'u' + id + kind; return imgCache[key] || (imgCache[key] = heroCanvas(id, kind).toDataURL()); }
 
@@ -262,6 +335,8 @@ export function skillIcon(type, col = '#7fe3ff') {
     case 'heal': R(2, 3, 3, 3, col); R(7, 3, 3, 3, col); R(2, 5, 8, 3, col); R(3, 8, 6, 1, col); R(4, 9, 4, 1, col); R(5, 10, 2, 1, col); R(3, 4, 1, 1, W2); break;
     case 'buff': R(5, 1, 2, 9, col); R(3, 3, 6, 2, col); R(4, 2, 4, 1, W2); R(2, 10, 8, 1, col); break;
     case 'uppercut': R(5, 2, 2, 9, col); R(3, 4, 2, 2, col); R(7, 4, 2, 2, col); R(5, 1, 2, 1, W2); break;
+    case 'crescent3': for (let j = 0; j < 3; j++) for (let i = 0; i < 6; i++) { const a = -1 + i * .4; R(Math.round(2 + j * 3 + Math.cos(a) * 3), Math.round(6 + Math.sin(a) * 4), 1, 1, j === 2 ? W2 : col); } break;
+    case 'phantom': R(1, 5, 10, 1, W2); for (let j = 0; j < 3; j++) { R(1 + j * 3, 2, 2, 7, col); } R(9, 3, 2, 5, W2); R(3, 9, 6, 1, col); R(3, 1, 6, 1, col); break;
     case 'chain': R(6, 0, 2, 3, W2); R(4, 3, 3, 2, col); R(5, 5, 3, 2, W2); R(3, 7, 3, 2, col); R(4, 9, 2, 3, W2); break;
   }
   c = p;

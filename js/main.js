@@ -169,7 +169,7 @@ function loop(t) {
   requestAnimationFrame(loop);
 }
 const fontsReady = document.fonts ? Promise.race([Promise.all(['8px "Silkscreen"', '8px "Do Hyeon"', '8px "Gowun Dodum"'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 1500))]) : Promise.resolve();
-fontsReady.catch(() => {}).finally(() => {
+Promise.all([fontsReady.catch(() => {}), Art.loadImages(['asbel_44', 'asbel_72'])]).finally(() => {
   setVolumes(G.settings.bgm, G.settings.sfx);
   toTitle();
   requestAnimationFrame(loop);

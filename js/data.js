@@ -1,11 +1,12 @@
 // 월하검무 — 게임 데이터 (영웅, 무기, 스킬, 적, 스테이지)
 export const VW = 320, VH = 180, GROUND = 152;
-export const VERSION = 'v0.2.2';
+export const VERSION = 'v0.3.0';
 
 export const RARITY = {
   3: { stars: '★★★', color: '#8fb8ff', name: '★3' },
   4: { stars: '★★★★', color: '#c99bff', name: '★4' },
   5: { stars: '★★★★★', color: '#ffd36b', name: '★5' },
+  6: { stars: '★★★★★★', color: '#ff9be8', name: '★6' },
 };
 
 // 무기별 기본 공격 콤보
@@ -56,10 +57,16 @@ export const SKILLS = {
   buff:      { cd: 14,  mul: 0,   desc: '7초 동안 공격력이 40% 오르고 이동이 빨라집니다.' },
   uppercut:  { cd: 5,   mul: 2.8, desc: '적을 공중으로 띄워 올리며 함께 솟구칩니다.' },
   chain:     { cd: 6,   mul: 2.2, desc: '가까운 적 네 명에게 번개를 떨어뜨립니다.' },
+  crescent3: { cd: 6,   mul: 2.1, desc: '보랏빛 거대한 초승달 검기를 연달아 세 번 날립니다. 모두 꿰뚫어요.' },
+  phantom:   { cd: 10,  mul: 3.2, desc: '눈에 보이지 않는 속도로 돌진해 베고, 지나간 적에게 잔상이 네 번 더 칼을 휘두릅니다. 돌진 중 무적.' },
 };
 
 // pal: hair, coat, trim, acc(리본·장식), eye, style(long|short|pony|twin|bob)
 export const HEROES = [
+  { id: 'asbel', name: '아스벨', title: '월영의 검성', rarity: 6, weapon: 'sword', img: 'asbel', anchor: [25, 41],
+    e: 'crescent3', eName: '월영 삼일섬', q: 'phantom', qName: '환영 난무',
+    pal: { hair: '#d9dcef', coat: '#2f3f9a', trim: '#c9b07a', acc: '#a77bff', eye: '#4a5cff', style: 'long' },
+    desc: '달이 가려진 밤에만 모습을 드러내는 검성. 보랏빛으로 빛나는 검은 그림자까지 벤다고 해요.' },
   { id: 'ria', name: '리아', title: '달빛 검사', rarity: 4, weapon: 'sword',
     e: 'wave', eName: '월광참', q: 'dashslash', qName: '그림자 베기',
     pal: { hair: '#e9edfb', coat: '#2e3f7d', trim: '#f3c75b', acc: '#5fdcff', eye: '#3cc8f2', style: 'long' },
@@ -113,7 +120,7 @@ export const HERO = Object.fromEntries(HEROES.map(h => [h.id, h]));
 
 export const MAX_LV = 40;
 export function heroStats(def, lv = 1, aw = 0) {
-  const base = { 3: [90, 9], 4: [100, 10], 5: [115, 12] }[def.rarity];
+  const base = { 3: [90, 9], 4: [100, 10], 5: [115, 12], 6: [135, 15] }[def.rarity];
   const w = WEAPONS[def.weapon];
   const g = 1 + (lv - 1) * .07, a = 1 + aw * .08;
   return { hp: Math.round(base[0] * w.hpMul * g * a), atk: Math.round(base[1] * w.atkMul * g * a * 10) / 10 };
@@ -122,7 +129,7 @@ export function power(def, lv, aw) { const s = heroStats(def, lv, aw); return Ma
 export function lvCost(lv) { return Math.round(60 * lv * Math.pow(1.08, lv)); }
 
 // 뽑기 확률
-export const GACHA = { cost1: 160, cost10: 1600, p5: .012, p4: .13, pity5: 70, pity4: 10 };
+export const GACHA = { cost1: 160, cost10: 1600, p6: .004, p5: .012, p4: .13, pity6: 160, pity5: 70, pity4: 10 };
 
 export const ENEMIES = {
   slime:   { name: '달빛 슬라임', hp: 30,   dmg: 8,  w: 7,  h: 10, silver: 4 },

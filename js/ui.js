@@ -270,16 +270,16 @@ export function records(backTo) {
 
 /* ---------------- 소환 제단 ---------------- */
 export function gacha(backTo) {
-  const S = G.save, feat = HEROES.filter(h => h.rarity === 5);
+  const S = G.save, f5 = HEROES.filter(h => h.rarity === 5), feat = [...f5.slice(0, 2), ...HEROES.filter(h => h.rarity >= 6), ...f5.slice(2)];
   show('gacha', head('소환 제단', wallet()) + `
     <div class="cols g">
       <div class="win banner">
-        <div class="bimg">${feat.map(h => sprite(h.id, 'big')).join('')}</div>
+        <div class="bimg">${feat.map(h => sprite(h.id, h.rarity >= 6 ? 'big six' : 'big')).join('')}</div>
         <div class="btext">
           <span class="eyebrow">상시 소환</span>
           <h3>달빛 아래 모인 영웅들</h3>
-          <p>★5 확률 ${(GACHA.p5 * 100).toFixed(1)}% · ★4 확률 ${(GACHA.p4 * 100).toFixed(0)}%<br>10회마다 ★4 이상 1명 확정 · ${GACHA.pity5}회 안에 ★5 확정</p>
-          <p class="pity">★5 확정까지 <b>${GACHA.pity5 - S.pity5}</b>회</p>
+          <p><span class="stars r6">★6</span> 아스벨 ${(GACHA.p6 * 100).toFixed(1)}% · ★5 ${(GACHA.p5 * 100).toFixed(1)}% · ★4 ${(GACHA.p4 * 100).toFixed(0)}%<br>10회마다 ★4 이상 확정 · ${GACHA.pity5}회 안에 ★5 · ${GACHA.pity6}회 안에 ★6 확정</p>
+          <p class="pity">★5 확정까지 <b>${GACHA.pity5 - S.pity5}</b>회 · ★6 확정까지 <b>${GACHA.pity6 - (S.pity6 || 0)}</b>회</p>
         </div>
       </div>
       <div class="win gside">
@@ -302,8 +302,8 @@ function doPull(n, backTo) {
   if (!S.party[1]) { const nw = res.find(r => r.res === 'new' && r.id !== S.party[0]); if (nw) S.party[1] = nw.id; }
   G.persist(); sfx('pull');
   const best = Math.max(...res.map(r => r.r));
-  setTimeout(() => sfx(best === 5 ? 'r5' : best === 4 ? 'r4' : 'ok'), 450);
-  show('gachaRes', `<div class="gres ${best === 5 ? 'gold' : best === 4 ? 'violet' : ''}">
+  setTimeout(() => sfx(best >= 5 ? 'r5' : best === 4 ? 'r4' : 'ok'), 450);
+  show('gachaRes', `<div class="gres ${best === 6 ? 'rainbow' : best === 5 ? 'gold' : best === 4 ? 'violet' : ''}">
       <div class="cards n${n}">${res.map((r, i) => `<div class="gcard r${r.r}" style="--d:${i * (n === 10 ? 90 : 0) + 250}ms">
         ${sprite(r.id)}<b>${HERO[r.id].name}</b>${stars(r.r)}
         <span class="gtag ${r.res}">${r.res === 'new' ? 'NEW' : r.res === 'aw' ? '각성 ' + r.aw : '은화 +' + r.silver}</span></div>`).join('')}</div>
@@ -313,21 +313,22 @@ function doPull(n, backTo) {
       </div></div>`, { ok: () => gacha(backTo), again: () => doPull(n, backTo) }, { cls: 'center dark', back: () => gacha(backTo) });
 }
 function pullOne(S) {
-  S.pulls++; S.pity5++; S.pity4++;
+  S.pulls++; S.pity6 = (S.pity6 || 0) + 1; S.pity5++; S.pity4++;
   const x = Math.random();
   let r = 3;
-  if (S.pity5 >= GACHA.pity5 || x < GACHA.p5) r = 5;
-  else if (S.pity4 >= GACHA.pity4 || x < GACHA.p5 + GACHA.p4) r = 4;
-  if (r === 5) { S.pity5 = 0; S.pity4 = 0; } else if (r === 4) S.pity4 = 0;
+  if (S.pity6 >= GACHA.pity6 || x < GACHA.p6) r = 6;
+  else if (S.pity5 >= GACHA.pity5 || x < GACHA.p6 + GACHA.p5) r = 5;
+  else if (S.pity4 >= GACHA.pity4 || x < GACHA.p6 + GACHA.p5 + GACHA.p4) r = 4;
+  if (r === 6) { S.pity6 = 0; S.pity5 = 0; S.pity4 = 0; } else if (r === 5) { S.pity5 = 0; S.pity4 = 0; } else if (r === 4) S.pity4 = 0;
   const pool = HEROES.filter(h => h.rarity === r), def = pool[Math.random() * pool.length | 0];
   const own = S.heroes[def.id];
   if (!own) { S.heroes[def.id] = { lv: 1, aw: 0 }; return { id: def.id, r, res: 'new' }; }
   if (own.aw < 5) { own.aw++; return { id: def.id, r, res: 'aw', aw: own.aw }; }
-  const v = { 3: 100, 4: 300, 5: 1000 }[r]; S.silver += v; return { id: def.id, r, res: 'silver', silver: v };
+  const v = { 3: 100, 4: 300, 5: 1000, 6: 2000 }[r]; S.silver += v; return { id: def.id, r, res: 'silver', silver: v };
 }
 function rates(backTo) {
-  const grp = [5, 4, 3].map(r => {
-    const list = HEROES.filter(h => h.rarity === r), p = r === 5 ? GACHA.p5 : r === 4 ? GACHA.p4 : 1 - GACHA.p5 - GACHA.p4;
+  const grp = [6, 5, 4, 3].map(r => {
+    const list = HEROES.filter(h => h.rarity === r), p = r === 6 ? GACHA.p6 : r === 5 ? GACHA.p5 : r === 4 ? GACHA.p4 : 1 - GACHA.p6 - GACHA.p5 - GACHA.p4;
     return `<div class="glabel">${stars(r)} <span>${(p * 100).toFixed(1)}% · ${list.length}명</span></div>
       <div class="rgrid">${list.map(h => `<div class="rcard r${r}">${sprite(h.id)}<div><b>${h.name}</b><span>${(p / list.length * 100).toFixed(2)}%</span></div></div>`).join('')}</div>`;
   }).join('');

@@ -67,7 +67,7 @@ export class World {
     else if (e.d.elite) this.say('ELITE', e.d.name, 1.4);
   }
   box(e) { return [e.x - e.w, e.y - e.h, e.x + e.w, e.y]; }
-  heroBox() { const h = this.hero; return [h.x - 4, h.y - 24, h.x + 4, h.y]; }
+  heroBox() { const h = this.hero; return [h.x - 5, h.y - 36, h.x + 5, h.y]; }
 
   /* ---------- 피해 ---------- */
   dmgOf(h, mul) { return h.atk * mul * (h.buffT > 0 ? 1.4 : 1); }
@@ -110,14 +110,14 @@ export class World {
     const h = this.hero;
     if (!h || h.dead || h.inv > 0 || h.dashT > 0 || this.done) return;
     d = Math.round(d);
-    h.hp -= d; this.num(h.x, h.y - 28, d, '#ff6b9a', false);
+    h.hp -= d; this.num(h.x, h.y - 42, d, '#ff6b9a', false);
     h.inv = 1; h.hurtT = .28; h.vx = Math.sign(h.x - fromX || -h.face) * 150; h.vy = -160; h.onGround = false;
     h.atkT = 0; h.skillT = 0; h.spinT = 0;
     this.addShake(5); this.hitstop = .07; sfx('hurt');
-    this.burst(h.x, h.y - 14, 10, ['#ff6b9a', '#ffffff'], 100, 200, .4);
+    this.burst(h.x, h.y - 20, 10, ['#ff6b9a', '#ffffff'], 100, 200, .4);
     if (h.hp <= 0) {
       h.hp = 0; h.dead = true; this.deathT = 1.1;
-      this.burst(h.x, h.y - 14, 40, ['#ffb3cf', '#fff1f7', h.def.pal.acc, h.def.pal.hair], 120, -20, 1.2);
+      this.burst(h.x, h.y - 20, 40, ['#ffb3cf', '#fff1f7', h.def.pal.acc, h.def.pal.hair], 120, -20, 1.2);
     }
   }
 
@@ -129,22 +129,24 @@ export class World {
     h.skillT = .3; h.atkT = 0; sfx('skill');
     const acc = h.def.pal.acc, f = h.face, dmg = this.dmgOf(h, S.mul);
     switch (type) {
-      case 'wave': this.shots.push({ team: 1, kind: 'wave', x: h.x + f * 10, y: h.y - 13, vx: f * 240, vy: 0, life: .9, dmg, pierce: true, hits: new Set(), w: 6, h: 10, col: acc, heavy: true }); break;
+      case 'wave': this.shots.push({ team: 1, kind: 'wave', x: h.x + f * 10, y: h.y - 20, vx: f * 240, vy: 0, life: .9, dmg, pierce: true, hits: new Set(), w: 6, h: 10, col: acc, heavy: true }); break;
+      case 'crescent3': h.skillT = .4; for (let i = 0; i < 3; i++) this.later(i * .13, () => { this.shots.push({ team: 1, kind: 'wave', big: true, x: h.x + h.face * 12, y: h.y - 21, vx: h.face * 290, vy: 0, life: 1, dmg, pierce: true, hits: new Set(), w: 9, h: 15, col: acc, heavy: true }); this.addShake(1.5); sfx('skill'); }); break;
+      case 'phantom': h.dashT = .24; h.dashSpeed = 430; h.inv = .55; h.dashHit = new Set(); h.dashDmg = dmg; h.phantom = true; h.skillT = 0; this.burst(h.x, h.y - 20, 16, [acc, '#ffffff'], 120, 0, .4); break;
       case 'dashslash': h.dashT = .22; h.dashSpeed = 400; h.inv = .4; h.dashHit = new Set(); h.dashDmg = dmg; h.skillT = 0; break;
       case 'spin': h.spinT = 1; h.spinTick = 0; h.skillT = 0; break;
-      case 'bolt': for (const a of [-.16, 0, .16]) this.shots.push({ team: 1, kind: h.def.weapon === 'bow' ? 'arrow' : 'orb', x: h.x + f * 8, y: h.y - 14, vx: f * 300 * Math.cos(a), vy: 300 * Math.sin(a), life: .7, dmg, w: 3, h: 3, col: acc }); break;
+      case 'bolt': for (const a of [-.16, 0, .16]) this.shots.push({ team: 1, kind: h.def.weapon === 'bow' ? 'arrow' : 'orb', x: h.x + f * 8, y: h.y - 20, vx: f * 300 * Math.cos(a), vy: 300 * Math.sin(a), life: .7, dmg, w: 3, h: 3, col: acc }); break;
       case 'nova': {
-        const nx = h.x + f * 26, ny = h.y - 16; h.skillT = .45;
+        const nx = h.x + f * 26, ny = h.y - 22; h.skillT = .45;
         this.fx.push({ kind: 'charge', x: nx, y: ny, life: .35, max: .35, col: acc });
         this.later(.35, () => { this.fx.push({ kind: 'ring', x: nx, y: ny, r0: 6, r1: 50, life: .35, max: .35, col: acc }); this.burst(nx, ny, 26, [acc, '#ffffff', '#ffe3a3'], 160, 60, .5); if (this.aoe(h, nx, ny, 48, S.mul, { heavy: true })) this.hitstop = .1; this.addShake(5); sfx('boom'); });
         break;
       }
       case 'rain': for (let i = 0; i < 10; i++) this.later(i * .07, () => { this.shots.push({ team: 1, kind: h.def.weapon === 'bow' ? 'fallarrow' : 'fallblade', x: h.x + f * (24 + rnd() * 96), y: h.y - 90, vx: f * 30, vy: 360, life: .6, dmg, w: 4, h: 6, col: acc }); sfx('shoot'); }); break;
-      case 'heal': for (const p of this.party) if (!p.dead) { const v = Math.round(p.maxHp * .25); p.hp = Math.min(p.maxHp, p.hp + v); if (p === h) this.num(h.x, h.y - 32, '+' + v, '#7dffb4', false); }
-        this.fx.push({ kind: 'ring', x: h.x, y: h.y - 14, r0: 4, r1: 34, life: .4, max: .4, col: '#7dffb4' }); this.burst(h.x, h.y - 14, 18, ['#ffb3cf', '#7dffb4', '#ffffff'], 70, -40, .8); this.aoe(h, h.x, h.y - 14, 34, S.mul); sfx('heal'); break;
-      case 'buff': h.buffT = 7; this.fx.push({ kind: 'ring', x: h.x, y: h.y - 14, r0: 20, r1: 4, life: .4, max: .4, col: '#ffd36b' }); this.burst(h.x, h.y - 10, 16, ['#ffd36b', '#ffffff'], 60, -80, .7); break;
+      case 'heal': for (const p of this.party) if (!p.dead) { const v = Math.round(p.maxHp * .25); p.hp = Math.min(p.maxHp, p.hp + v); if (p === h) this.num(h.x, h.y - 46, '+' + v, '#7dffb4', false); }
+        this.fx.push({ kind: 'ring', x: h.x, y: h.y - 20, r0: 4, r1: 34, life: .4, max: .4, col: '#7dffb4' }); this.burst(h.x, h.y - 20, 18, ['#ffb3cf', '#7dffb4', '#ffffff'], 70, -40, .8); this.aoe(h, h.x, h.y - 20, 34, S.mul); sfx('heal'); break;
+      case 'buff': h.buffT = 7; this.fx.push({ kind: 'ring', x: h.x, y: h.y - 20, r0: 20, r1: 4, life: .4, max: .4, col: '#ffd36b' }); this.burst(h.x, h.y - 10, 16, ['#ffd36b', '#ffffff'], 60, -80, .7); break;
       case 'uppercut': {
-        const bx = [f > 0 ? h.x : h.x - 28, h.y - 40, f > 0 ? h.x + 28 : h.x, h.y + 2]; let any = 0;
+        const bx = [f > 0 ? h.x : h.x - 30, h.y - 46, f > 0 ? h.x + 30 : h.x, h.y + 2]; let any = 0;
         for (const e of this.enemies) if (!e.dead && hit(bx, this.box(e))) { this.damage(e, dmg, f, { launch: true, heavy: true }); any++; }
         h.vy = -270; h.onGround = false; h.jumps = 1; h.skillT = .25;
         this.fx.push({ kind: 'arc', x: h.x + f * 2, y: h.y - 10, face: f, a0: 1.4, a1: -1.6, r0: 14, r1: 22, life: .22, max: .22, col: acc });
@@ -154,7 +156,7 @@ export class World {
       case 'chain': {
         const list = this.enemies.filter(e => !e.dead && Math.abs(e.x - h.x) < 160).sort((a, b) => Math.abs(a.x - h.x) - Math.abs(b.x - h.x)).slice(0, 4);
         list.forEach((e, i) => this.later(i * .06, () => { if (e.dead) return; this.fx.push({ kind: 'bolt', x: e.x, y: e.y - e.h / 2, life: .25, max: .25, col: acc, seed: rnd() * 1000 }); this.damage(e, dmg, Math.sign(e.x - h.x) || f, { heavy: true }); sfx('zap'); }));
-        if (!list.length) this.fx.push({ kind: 'ring', x: h.x + f * 20, y: h.y - 14, r0: 2, r1: 16, life: .25, max: .25, col: acc });
+        if (!list.length) this.fx.push({ kind: 'ring', x: h.x + f * 20, y: h.y - 20, r0: 2, r1: 16, life: .25, max: .25, col: acc });
         break;
       }
     }
@@ -163,15 +165,15 @@ export class World {
     const st = h.step, f = h.face, dmg = this.dmgOf(h, st.mul);
     if (st.kind === 'shot') {
       const k = st.shot, sp = k === 'arrow' ? 330 : k === 'orb' ? 220 : 190;
-      this.shots.push({ team: 1, kind: k, x: h.x + f * 10, y: h.y - 14, vx: f * sp, vy: 0, life: k === 'arrow' ? .7 : .9, dmg, pierce: !!st.pierce, hits: new Set(), w: k === 'bigorb' ? 6 : 3, h: k === 'bigorb' ? 6 : 3, col: h.def.pal.acc, heavy: st.heavy, boom: k === 'bigorb' ? 22 : 0 });
+      this.shots.push({ team: 1, kind: k, x: h.x + f * 10, y: h.y - 20, vx: f * sp, vy: 0, life: k === 'arrow' ? .7 : .9, dmg, pierce: !!st.pierce, hits: new Set(), w: k === 'bigorb' ? 6 : 3, h: k === 'bigorb' ? 6 : 3, col: h.def.pal.acc, heavy: st.heavy, boom: k === 'bigorb' ? 22 : 0 });
       sfx('shoot'); return;
     }
-    const reach = st.reach, top = h.y - st.h + (st.kind === 'thrust' ? -10 : 2);
+    const reach = st.reach + 2, top = st.kind === 'thrust' ? h.y - 20 - st.h / 2 : h.y - st.h - 4;
     const bx = [f > 0 ? h.x + 2 : h.x - reach, top, f > 0 ? h.x + reach : h.x - 2, top + st.h];
     let any = 0;
     for (const e of this.enemies) if (!e.dead && hit(bx, this.box(e))) { this.damage(e, dmg, f, { heavy: st.heavy }); any++; }
-    if (st.kind === 'thrust') this.fx.push({ kind: 'thrust', x: h.x + f * 8, y: h.y - 14, face: f, len: reach - 6, life: .14, max: .14, col: h.def.pal.acc });
-    else this.fx.push({ kind: 'arc', x: h.x + f, y: h.y - 14, face: f, a0: st.arc[0], a1: st.arc[1], r0: reach - 12, r1: reach - 6, life: h.atkDur * .7, max: h.atkDur * .7, col: h.def.pal.acc, heavy: st.heavy });
+    if (st.kind === 'thrust') this.fx.push({ kind: 'thrust', x: h.x + f * 8, y: h.y - 20, face: f, len: reach - 6, life: .14, max: .14, col: h.def.pal.acc });
+    else this.fx.push({ kind: 'arc', x: h.x + f, y: h.y - 20, face: f, a0: st.arc[0], a1: st.arc[1], r0: reach - 12, r1: reach - 6, life: h.atkDur * .7, max: h.atkDur * .7, col: h.def.pal.acc, heavy: st.heavy });
     sfx(st.heavy ? 'heavy' : 'swing');
     if (any) { this.hitstop = st.heavy ? .08 : .04; this.addShake(st.shake || (st.heavy ? 3 : 1.5)); }
   }
@@ -186,9 +188,9 @@ export class World {
     const o = this.hero, n = this.partner;
     Object.assign(n, { x: o.x, y: forced ? Math.min(o.y, GROUND) : o.y, vx: 0, vy: forced ? -120 : Math.min(0, o.vy), face: o.face, onGround: false, state: 'jump', anim: 0, atkT: 0, dashT: 0, skillT: 0, spinT: 0, hurtT: 0, inv: 1 });
     this.active = 1 - this.active; this.tagCD = forced ? 3 : 6;
-    this.fx.push({ kind: 'ring', x: n.x, y: n.y - 14, r0: 4, r1: 36, life: .3, max: .3, col: n.def.pal.acc });
-    this.burst(n.x, n.y - 14, 20, [n.def.pal.acc, '#ffffff', n.def.pal.hair], 120, 40, .5);
-    if (this.aoe(n, n.x, n.y - 14, 36, 1.8, { heavy: true })) this.hitstop = .12;
+    this.fx.push({ kind: 'ring', x: n.x, y: n.y - 20, r0: 4, r1: 36, life: .3, max: .3, col: n.def.pal.acc });
+    this.burst(n.x, n.y - 20, 20, [n.def.pal.acc, '#ffffff', n.def.pal.hair], 120, 40, .5);
+    if (this.aoe(n, n.x, n.y - 20, 36, 1.8, { heavy: true })) this.hitstop = .12;
     this.addShake(3); sfx('tag');
     if (forced) this.say(n.def.name, '교대 출전!', 1.2);
   }
@@ -229,14 +231,18 @@ export class World {
     if (h.skillT > 0) h.skillT -= dt;
     if (h.spinT > 0) {
       h.spinT -= dt; h.spinTick -= dt;
-      if (h.spinTick <= 0) { h.spinTick = .12; this.aoe(h, h.x, h.y - 14, 28, SKILLS.spin.mul, { kb: 70 }); this.fx.push({ kind: 'ring', x: h.x, y: h.y - 14, r0: 26, r1: 28, life: .1, max: .1, col: h.def.pal.acc }); sfx('swing'); }
+      if (h.spinTick <= 0) { h.spinTick = .12; this.aoe(h, h.x, h.y - 20, 28, SKILLS.spin.mul, { kb: 70 }); this.fx.push({ kind: 'ring', x: h.x, y: h.y - 20, r0: 26, r1: 28, life: .1, max: .1, col: h.def.pal.acc }); sfx('swing'); }
     }
     if (h.hurtT > 0) h.hurtT -= dt;
     else if (h.dashT > 0) {
       h.dashT -= dt; h.vx = h.face * h.dashSpeed; h.vy = 0;
       if (Math.floor(h.dashT * 60) % 2 === 0) this.ghosts.push({ x: h.x, y: h.y, face: h.face, life: .22, snap: { ...h } });
-      if (h.dashHit) for (const e of this.enemies) if (!e.dead && !h.dashHit.has(e) && hit([h.x - 10, h.y - 26, h.x + 10, h.y], this.box(e))) { h.dashHit.add(e); this.damage(e, h.dashDmg, h.face, { heavy: true }); this.hitstop = Math.max(this.hitstop, .05); }
-      if (h.dashT <= 0 && h.dashHit) { h.dashHit = null; this.fx.push({ kind: 'slashline', x: h.x, y: h.y - 14, face: h.face, len: 90, life: .25, max: .25, col: h.def.pal.acc }); }
+      if (h.dashHit) for (const e of this.enemies) if (!e.dead && !h.dashHit.has(e) && hit([h.x - 12, h.y - 36, h.x + 12, h.y], this.box(e))) { h.dashHit.add(e); this.damage(e, h.dashDmg, h.face, { heavy: true }); this.hitstop = Math.max(this.hitstop, .05); }
+      if (h.dashT <= 0 && h.dashHit && h.phantom) {
+        h.phantom = false; const list = [...h.dashHit], hh = h;
+        for (let k = 0; k < 4; k++) this.later(.15 + k * .09, () => { for (const e of list) { if (e.dead) continue; this.fx.push({ kind: 'slashline', x: e.x + (rnd() - .5) * 20, y: e.y - e.h / 2 + (rnd() - .5) * 10, face: rnd() < .5 ? 1 : -1, len: 30, life: .16, max: .16, col: hh.def.pal.acc }); this.damage(e, this.dmgOf(hh, .8), rnd() < .5 ? 1 : -1, {}); } if (list.some(e => !e.dead)) { this.hitstop = Math.max(this.hitstop, .03); sfx('swing'); } });
+      }
+      if (h.dashT <= 0 && h.dashHit) { h.dashHit = null; this.fx.push({ kind: 'slashline', x: h.x, y: h.y - 20, face: h.face, len: 90, life: .25, max: .25, col: h.def.pal.acc }); }
     } else {
       if (I.pressed.dash && h.dashCD <= 0 && (h.onGround || h.airDash)) {
         if (!h.onGround) h.airDash = false;
@@ -274,6 +280,7 @@ export class World {
     if (h.onGround) { h.jumps = 0; h.airDash = true; if (!was) this.burst(h.x, h.y, 4, ['#9c8fd0', '#e9edfb'], 30, 60, .25); }
     else if (h.jumps === 0) h.jumps = 1;
     const st = h.hurtT > 0 ? 'hurt' : h.dashT > 0 ? 'dash' : h.spinT > 0 ? 'spin' : h.skillT > 0 ? 'skill' : h.atkT > 0 ? 'attack' : !h.onGround ? (h.vy < 0 ? 'jump' : 'fall') : Math.abs(h.vx) > 12 ? 'run' : 'idle';
+    if (h.def.rarity >= 6 && rnd() < .2) this.parts.push({ x: h.x + (rnd() - .5) * 18 - h.face * 8, y: h.y - 4 - rnd() * 38, vx: 0, vy: -12, g: 0, life: .5, max: .5, col: rnd() < .5 ? h.def.pal.acc : '#ece6ff', sz: 1 });
     if (st !== h.state) { h.state = st; h.anim = 0; }
     h.anim += dt;
   }
@@ -292,7 +299,7 @@ export class World {
         case 'wisp': {
           if (e.stun > 0) { e.stun -= dt; e.vx *= Math.pow(.1, dt); e.vy *= Math.pow(.1, dt); }
           else { e.face = toward; const tv = alive ? toward * 40 : 0; e.vx += (tv - e.vx) * dt * 2; }
-          const ty = e.baseY + Math.sin(e.t * 3) * 7 + (Math.abs(dx) < 60 && alive ? (h.y - 16 - e.baseY) * .6 : 0);
+          const ty = e.baseY + Math.sin(e.t * 3) * 7 + (Math.abs(dx) < 60 && alive ? (h.y - 22 - e.baseY) * .6 : 0);
           e.vy += ((ty - e.y) * 4 - e.vy) * Math.min(1, dt * 4); break;
         }
         case 'bat': {
@@ -303,7 +310,7 @@ export class World {
             e.swoopT -= dt;
             const tx = h.x - toward * 50, ty = e.baseY + Math.sin(e.t * 4) * 5;
             e.vx += ((tx - e.x) * 2 - e.vx) * Math.min(1, dt * 3); e.vy += ((ty - e.y) * 3 - e.vy) * Math.min(1, dt * 3);
-            if (e.swoopT <= 0 && alive && Math.abs(dx) < 120) { e.ai = 'swoop'; e.aiT = .7; const a = Math.atan2(h.y - 12 - e.y, dx); e.vx = Math.cos(a) * 190; e.vy = Math.sin(a) * 190; }
+            if (e.swoopT <= 0 && alive && Math.abs(dx) < 120) { e.ai = 'swoop'; e.aiT = .7; const a = Math.atan2(h.y - 18 - e.y, dx); e.vx = Math.cos(a) * 190; e.vy = Math.sin(a) * 190; }
           }
           break;
         }
@@ -311,7 +318,7 @@ export class World {
           e.vy += 700 * dt;
           if (e.stun > 0) { e.stun -= dt; break; }
           e.face = toward;
-          if (e.ai === 'aim') { e.vx = 0; e.aiT -= dt; if (e.aiT <= 0) { e.ai = 'walk'; e.shootT = 1.8 + rnd(); const a = Math.atan2(h.y - 14 - (e.y - 16), dx); this.shots.push({ team: 2, kind: 'earrow', x: e.x + e.face * 8, y: e.y - 16, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 1.6, dmg: e.dmg, w: 3, h: 2 }); sfx('shoot'); } }
+          if (e.ai === 'aim') { e.vx = 0; e.aiT -= dt; if (e.aiT <= 0) { e.ai = 'walk'; e.shootT = 1.8 + rnd(); const a = Math.atan2(h.y - 20 - (e.y - 16), dx); this.shots.push({ team: 2, kind: 'earrow', x: e.x + e.face * 8, y: e.y - 16, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 1.6, dmg: e.dmg, w: 3, h: 2 }); sfx('shoot'); } }
           else {
             const want = Math.abs(dx) < 70 ? -toward : Math.abs(dx) > 130 ? toward : 0;
             e.vx = alive ? want * 38 : 0; e.shootT -= dt;
@@ -392,12 +399,12 @@ export class World {
       d.t += dt; d.vy += 500 * dt; d.x += d.vx * dt; d.vx *= Math.pow(.2, dt); d.y += d.vy * dt;
       if (d.y > GROUND - 3) { d.y = GROUND - 3; d.vy = -d.vy * .3; if (Math.abs(d.vy) < 20) d.vy = 0; }
       if (!h || h.dead) continue;
-      const dx = h.x - d.x, dy = h.y - 10 - d.y, dist = Math.hypot(dx, dy);
+      const dx = h.x - d.x, dy = h.y - 16 - d.y, dist = Math.hypot(dx, dy);
       if (d.kind === 'coin' && d.t > .5 && dist < 60) { d.x += dx * dt * 6; d.y += dy * dt * 6; }
       if (dist < (d.kind === 'coin' ? 10 : 12) && d.t > .3) {
         d.got = true;
         if (d.kind === 'coin') { this.run.silver += d.v; sfx('coin'); }
-        else { const v = Math.round(h.maxHp * (d.big ? .4 : .15)); h.hp = Math.min(h.maxHp, h.hp + v); this.num(h.x, h.y - 30, '+' + v, '#7dffb4', false); this.burst(d.x, d.y, 10, ['#ff9bc0', '#ffffff'], 60, 0, .4); sfx('heal'); }
+        else { const v = Math.round(h.maxHp * (d.big ? .4 : .15)); h.hp = Math.min(h.maxHp, h.hp + v); this.num(h.x, h.y - 44, '+' + v, '#7dffb4', false); this.burst(d.x, d.y, 10, ['#ff9bc0', '#ffffff'], 60, 0, .4); sfx('heal'); }
       }
     }
     this.drops = this.drops.filter(d => !d.got && d.t < 14);
@@ -477,14 +484,14 @@ export class World {
     // 잔상
     for (const g of this.ghosts) {
       if (g.enemy) { Art.blit(L, Art.enemyArt(g.e), X(g.e.x), Y(g.e.y), g.e.face, { tint: '#8f73ff', noOutline: true, alpha: g.life * 2.5 }); continue; }
-      Art.blit(L, Art.heroArt(g.snap), X(g.x), Y(g.y), g.face, { tint: g.snap.def.pal.acc, alpha: g.life * 2, noOutline: true });
+      Art.drawHero(L, g.snap, X(g.x), Y(g.y), g.face, { tint: g.snap.def.pal.acc, alpha: g.life * 2, noOutline: true });
     }
     // 영웅
     const h = this.hero;
     if (h && !h.dead) {
       L.globalAlpha = .35; L.fillStyle = Art.OL; L.fillRect(X(h.x) - 5, (h.onGround ? Y(h.y) : GROUND + sy), 10, 2); L.globalAlpha = 1;
       if (h.buffT > 0 && Math.floor(this.t * 10) % 2) { L.fillStyle = '#ffd36b'; L.fillRect(X(h.x) + Math.round(Math.sin(this.t * 9) * 7), Y(h.y) - 4 - Math.round((this.t * 30) % 24), 1, 2); }
-      if (!(h.inv > 0 && h.dashT <= 0 && h.hurtT <= 0 && Math.floor(this.t * 16) % 2 && this.mode !== 'hub')) Art.blit(L, Art.heroArt(h), X(h.x), Y(h.y), h.face);
+      if (!(h.inv > 0 && h.dashT <= 0 && h.hurtT <= 0 && Math.floor(this.t * 16) % 2 && this.mode !== 'hub')) Art.drawHero(L, h, X(h.x), Y(h.y), h.face);
     }
     // 이펙트
     for (const f of this.fx) this.drawFx(L, f, X, Y);
@@ -529,7 +536,7 @@ export class World {
   drawShot(L, s, X, Y) {
     const x = X(s.x), y = Y(s.y), f = Math.sign(s.vx) || 1;
     switch (s.kind) {
-      case 'wave': for (let i = -9; i <= 9; i++) { const o = Math.round(5 * Math.sqrt(1 - (i / 9.5) ** 2)); L.fillStyle = '#ffffff'; L.fillRect(x + f * o, y + i, 2 * f, 1); L.fillStyle = s.col; L.fillRect(x + f * (o - 2), y + i, 2 * f, 1); L.globalAlpha = .4; L.fillRect(x + f * (o - 5), y + i, 3 * f, 1); L.globalAlpha = 1; } break;
+      case 'wave': { const R9 = s.big ? 14 : 9, RW = s.big ? 7 : 5; for (let i = -R9; i <= R9; i++) { const o = Math.round(RW * Math.sqrt(1 - (i / (R9 + .5)) ** 2)); L.fillStyle = '#ffffff'; L.fillRect(x + f * o, y + i, 2 * f, 1); L.fillStyle = s.col; L.fillRect(x + f * (o - 2), y + i, 2 * f, 1); L.globalAlpha = .4; L.fillRect(x + f * (o - 5), y + i, 3 * f, 1); L.globalAlpha = 1; } break; }
       case 'arrow': case 'fallarrow': {
         const a = Math.atan2(s.vy, s.vx); for (let i = 0; i < 9; i++) { L.fillStyle = i < 2 ? '#ffffff' : i > 6 ? s.col : '#cfd6ee'; L.fillRect(Math.round(x - Math.cos(a) * i), Math.round(y - Math.sin(a) * i), 1, 1); } break;
       }
