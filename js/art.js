@@ -1,5 +1,6 @@
 // 월하검무 — 픽셀 아트 (모두 코드로 그림)
 import { VW, VH, GROUND, HERO, WEAPONS } from './data.js';
+import { menuCanvas } from './sprite.js';
 
 export const OL = '#120c22';
 let c = null;
@@ -279,6 +280,7 @@ function fakeHero(id, state = 'idle') { return { def: HERO[id], state, anim: .2,
 export function heroCanvas(id, kind = 'full') {
   const key = id + kind; if (imgCache[key]) return imgCache[key];
   const def = HERO[id], big = def.img && IMG[def.img + '_72'];
+  if (def.sprite) { const k = menuCanvas(def.sprite.id, kind); if (k) return imgCache[key] = k; }
   const k = kind === 'face' ? mk(22, 22) : mk(64, 56);
   const x = k.getContext('2d'); x.imageSmoothingEnabled = false;
   if (big && kind === 'face') { x.drawImage(big, 33, 1, 30, 30, 0, 0, 22, 22); return imgCache[key] = k; }

@@ -1,6 +1,7 @@
 // 월하검무 — 전투·이동 엔진 (거점과 스테이지가 함께 씀)
 import { VW, VH, GROUND, HERO, WEAPONS, SKILLS, ENEMIES, heroStats, endlessWave, endlessScale, permBonus } from './data.js';
 import * as Art from './art.js';
+import { hasSprite, drawSprite, drawEffect, spriteM, hitTime } from './sprite.js';
 import { sfx } from './audio.js';
 
 const rnd = Math.random;
@@ -122,7 +123,7 @@ export class World {
     this.addShake(5); this.hitstop = .07; sfx('hurt');
     this.burst(h.x, h.y - 20, 10, ['#ff6b9a', '#ffffff'], 100, 200, .4);
     if (h.hp <= 0) {
-      h.hp = 0; h.dead = true; this.deathT = 1.1;
+      h.hp = 0; h.dead = true; h.deadAt = this.t; this.deathT = 1.1;
       this.burst(h.x, h.y - 20, 40, ['#ffb3cf', '#fff1f7', h.def.pal.acc, h.def.pal.hair], 120, -20, 1.2);
     }
   }
@@ -138,8 +139,8 @@ export class World {
     h.spinMul = M;
     switch (type) {
       case 'wave': this.shots.push({ team: 1, kind: 'wave', x: h.x + f * 10, y: h.y - 20, vx: f * 240, vy: 0, life: .9, dmg, pierce: true, hits: new Set(), w: 6, h: 10, col: acc, heavy: true }); break;
-      case 'crescent3': h.skillT = .4; for (let i = 0; i < 3; i++) this.later(i * .13, () => { this.shots.push({ team: 1, kind: 'wave', big: true, x: h.x + h.face * 12, y: h.y - 21, vx: h.face * 290, vy: 0, life: 1, dmg, pierce: true, hits: new Set(), w: 9, h: 15, col: acc, heavy: true }); this.addShake(1.5); sfx('skill'); }); break;
-      case 'phantom': h.dashT = .24; h.dashSpeed = 430; h.inv = .55; h.dashHit = new Set(); h.dashDmg = dmg; h.phantom = true; h.skillT = 0; this.burst(h.x, h.y - 20, 16, [acc, '#ffffff'], 120, 0, .4); break;
+      case 'crescent3': h.skillT = .4; for (let i = 0; i < 3; i++) this.later(i * .13, () => { this.shots.push({ team: 1, kind: 'wave', big: true, sprite: hasSprite(h) ? 'projectile' : null, spr: h.def.sprite?.id, x: h.x + h.face * 12, y: h.y - 21, vx: h.face * 290, vy: 0, life: 1, dmg, pierce: true, hits: new Set(), w: 9, h: 15, col: acc, heavy: true }); this.addShake(1.5); sfx('skill'); }); break;
+      case 'phantom': h.dashT = .24; h.dashSpeed = 430; h.inv = .55; h.dashHit = new Set(); h.dashDmg = dmg; h.phantom = true; h.skillT = 0; if (hasSprite(h)) this.fx.push({ kind: 'sfx', key: 'field', spr: h.def.sprite.id, x: h.x, y: h.y - 6, face: h.face, life: .6, max: .6, scale: 1 }); this.burst(h.x, h.y - 20, 16, [acc, '#ffffff'], 120, 0, .4); break;
       case 'dashslash': h.dashT = .22; h.dashSpeed = 400; h.inv = .4; h.dashHit = new Set(); h.dashDmg = dmg; h.skillT = 0; break;
       case 'spin': h.spinT = 1; h.spinTick = 0; h.skillT = 0; break;
       case 'bolt': for (const a of [-.16, 0, .16]) this.shots.push({ team: 1, kind: h.def.weapon === 'bow' ? 'arrow' : 'orb', x: h.x + f * 8, y: h.y - 20, vx: f * 300 * Math.cos(a), vy: 300 * Math.sin(a), life: .7, dmg, w: 3, h: 3, col: acc }); break;
@@ -249,7 +250,7 @@ export class World {
       if (h.dashHit) for (const e of this.enemies) if (!e.dead && !h.dashHit.has(e) && hit([h.x - 12, h.y - 36, h.x + 12, h.y], this.box(e))) { h.dashHit.add(e); this.damage(e, h.dashDmg, h.face, { heavy: true }); this.hitstop = Math.max(this.hitstop, .05); }
       if (h.dashT <= 0 && h.dashHit && h.phantom) {
         h.phantom = false; const list = [...h.dashHit], hh = h;
-        for (let k = 0; k < 4; k++) this.later(.15 + k * .09, () => { for (const e of list) { if (e.dead) continue; this.fx.push({ kind: 'slashline', x: e.x + (rnd() - .5) * 20, y: e.y - e.h / 2 + (rnd() - .5) * 10, face: rnd() < .5 ? 1 : -1, len: 30, life: .16, max: .16, col: hh.def.pal.acc }); this.damage(e, this.dmgOf(hh, .8), rnd() < .5 ? 1 : -1, {}); } if (list.some(e => !e.dead)) { this.hitstop = Math.max(this.hitstop, .03); sfx('swing'); } });
+        for (let k = 0; k < 4; k++) this.later(.15 + k * .09, () => { for (const e of list) { if (e.dead) continue; if (k === 3 && hasSprite(hh)) this.fx.push({ kind: 'sfx', key: 'explosion', spr: hh.def.sprite.id, x: e.x, y: e.y - e.h / 2, face: 1, life: .3, max: .3, scale: .6 }); this.fx.push({ kind: 'slashline', x: e.x + (rnd() - .5) * 20, y: e.y - e.h / 2 + (rnd() - .5) * 10, face: rnd() < .5 ? 1 : -1, len: 30, life: .16, max: .16, col: hh.def.pal.acc }); this.damage(e, this.dmgOf(hh, .8), rnd() < .5 ? 1 : -1, {}); } if (list.some(e => !e.dead)) { this.hitstop = Math.max(this.hitstop, .03); sfx('swing'); } });
       }
       if (h.dashT <= 0 && h.dashHit) { h.dashHit = null; this.fx.push({ kind: 'slashline', x: h.x, y: h.y - 20, face: h.face, len: 90, life: .25, max: .25, col: h.def.pal.acc }); }
     } else {
@@ -277,7 +278,7 @@ export class World {
         }
       }
     }
-    if (h.atkT > 0 && !h.hitDone && h.step && h.atkDur - h.atkT >= h.step.hitAt) { h.hitDone = true; this.doStep(h); }
+    if (h.atkT > 0 && !h.hitDone && h.step && h.atkDur - h.atkT >= (hasSprite(h) ? hitTime(h, h.step) : h.step.hitAt)) { h.hitDone = true; this.doStep(h); }
     if (h.dashT <= 0) { h.vy += 900 * dt; if (!I.held.jump && h.vy < -110 && h.hurtT <= 0 && h.skillT <= 0) h.vy += 1100 * dt; if (h.vy > 420) h.vy = 420; }
     if (h.hurtT > 0) h.vx *= Math.pow(.05, dt);
     h.x = clamp(h.x + h.vx * dt, 6, this.width - 6);
@@ -497,9 +498,11 @@ export class World {
       Art.blit(L, Art.enemyArt(e), X(e.x), Y(e.y), e.face, { flash: e.flash > 0 });
       if (!e.d.boss && e.type !== 'dummy' && e.hp < e.max) { const bx = X(e.x) - 7, by = Y(e.y - e.h) - 6; L.fillStyle = Art.OL; L.fillRect(bx - 1, by - 1, 16, 3); L.fillStyle = '#2a2150'; L.fillRect(bx, by, 14, 1); L.fillStyle = e.d.elite ? '#ffb347' : '#ff6b9a'; L.fillRect(bx, by, Math.round(14 * clamp(e.hp / e.max, 0, 1)), 1); }
     }
+    const sprDraw = [];
     // 잔상
     for (const g of this.ghosts) {
       if (g.enemy) { Art.blit(L, Art.enemyArt(g.e), X(g.e.x), Y(g.e.y), g.e.face, { tint: '#8f73ff', noOutline: true, alpha: g.life * 2.5 }); continue; }
+      if (hasSprite(g.snap)) { sprDraw.push({ h: g.snap, x: X(g.x), y: Y(g.y), face: g.face, tint: g.snap.def.pal.acc, alpha: g.life * 2 }); continue; }
       Art.drawHero(L, g.snap, X(g.x), Y(g.y), g.face, { tint: g.snap.def.pal.acc, alpha: g.life * 2, noOutline: true });
     }
     // 영웅
@@ -507,12 +510,15 @@ export class World {
     if (h && !h.dead) {
       L.globalAlpha = .35; L.fillStyle = Art.OL; L.fillRect(X(h.x) - 5, (h.onGround ? Y(h.y) : GROUND + sy), 10, 2); L.globalAlpha = 1;
       if (h.buffT > 0 && Math.floor(this.t * 10) % 2) { L.fillStyle = '#ffd36b'; L.fillRect(X(h.x) + Math.round(Math.sin(this.t * 9) * 7), Y(h.y) - 4 - Math.round((this.t * 30) % 24), 1, 2); }
-      if (!(h.inv > 0 && h.dashT <= 0 && h.hurtT <= 0 && Math.floor(this.t * 16) % 2 && this.mode !== 'hub')) Art.drawHero(L, h, X(h.x), Y(h.y), h.face);
-    }
+      if (!(h.inv > 0 && h.dashT <= 0 && h.hurtT <= 0 && Math.floor(this.t * 16) % 2 && this.mode !== 'hub')) {
+        if (hasSprite(h)) sprDraw.push({ h, x: X(h.x), y: Y(h.y), face: h.face });
+        else Art.drawHero(L, h, X(h.x), Y(h.y), h.face);
+      }
+    } else if (h && h.dead && hasSprite(h)) sprDraw.push({ h, x: X(h.x), y: Y(h.y), face: h.face });
     // 이펙트
     for (const f of this.fx) this.drawFx(L, f, X, Y);
     // 탄
-    for (const s of this.shots) this.drawShot(L, s, X, Y);
+    for (const s of this.shots) if (!s.sprite) this.drawShot(L, s, X, Y);
     // 파티클
     for (const p of this.parts) { L.globalAlpha = clamp(p.life / p.max * 1.5, 0, 1); L.fillStyle = p.col; L.fillRect(X(p.x), Y(p.y), p.sz, p.sz); }
     L.globalAlpha = 1;
@@ -521,6 +527,15 @@ export class World {
     // ---- 고해상도 레이어 ----
     Hc.setTransform(sc, 0, 0, sc, 0, 0);
     Hc.clearRect(0, 0, VW, VH);
+    if (sprDraw.length || this.fx.some(f => f.kind === 'sfx') || this.shots.some(s => s.sprite)) {
+      const m = spriteM(sc);
+      Hc.setTransform(1, 0, 0, 1, 0, 0);
+      for (const f of this.fx) if (f.kind === 'sfx' && f.key === 'field') drawEffect(Hc, f.spr, f.key, X(f.x) * sc, Y(f.y) * sc, m, f.face, Math.min(1, f.life / f.max * 2), f.scale);
+      for (const d of sprDraw) drawSprite(Hc, d.h, d.x * sc, d.y * sc, m, d.face, this.t, d);
+      for (const s of this.shots) if (s.sprite) drawEffect(Hc, s.spr, s.sprite, X(s.x) * sc, Y(s.y) * sc, m, Math.sign(s.vx) || 1, Math.min(1, s.life * 4), .8);
+      for (const f of this.fx) if (f.kind === 'sfx' && f.key !== 'field') drawEffect(Hc, f.spr, f.key, X(f.x) * sc, Y(f.y) * sc, m, f.face, Math.min(1, f.life / f.max * 2), f.scale);
+      Hc.setTransform(sc, 0, 0, sc, 0, 0);
+    }
     if (this.mode === 'hub' && !this.hideLabels) this.drawStations(Hc, X);
     if (this.dev.hitbox) {
       Hc.lineWidth = .5;

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>은월의 마검사 스프라이트</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gowun+Dodum&family=Silkscreen&display=swap">
+<style>
+/* 레이아웃: 위에 조작 무대(정수 배율), 아래에 동작별 재생 칸 6개와 이펙트 */
+:root{
+  --bg:#141a2a; --panel:#1c2338; --line:#36406a; --ink:#e8e6f6; --dim:#9aa0c4;
+  --accent:#a68bff; --gold:#ffd36b; --ok:#7dffb4;
+  --display:"Do Hyeon","Apple SD Gothic Neo",sans-serif; --body:"Gowun Dodum","Apple SD Gothic Neo",sans-serif; --pixel:"Silkscreen",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+h1{font:400 30px var(--display);margin:0;color:var(--gold)}
+.q{color:var(--dim);margin:0}
+.tag{font:400 11px var(--pixel);color:var(--accent);letter-spacing:.08em}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar label{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:13px}
+button,select{font:400 15px var(--display);color:var(--ink);background:#262f4e;border:1px solid var(--line);border-radius:4px;padding:6px 12px;cursor:pointer;min-height:36px}
+button.on{background:#4a3aa0;border-color:var(--accent)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.stagebox{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.stagewrap{overflow-x:auto}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+#stage{background:#202842}
+.state{font:400 13px var(--pixel);color:var(--ok)}
+.keys{color:var(--dim);font-size:13px;margin:0}
+.keys b{font-family:var(--pixel);font-weight:400;color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.cell{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.cell b{font:400 17px var(--display)}
+.cell span{font:400 11px var(--pixel);color:var(--dim);text-align:center}
+.fx{display:flex;flex-wrap:wrap;gap:12px}
+.fx .cell{flex:1 1 180px}
+.mobile{display:none;gap:8px;flex-wrap:wrap}
+@media (pointer:coarse){.mobile{display:flex}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">★6 · 근접 공격형 · 64×96 · 25 frames</span>
+    <h1>은월의 마검사</h1>
+    <p class="q">“내 검이 길을 연다.”</p>
+  </header>
+
+  <section class="stagebox" aria-label="조작 미리보기">
+    <div class="bar">
+      <label for="scale">배율</label>
+      <select id="scale"><option>2</option><option selected>3</option><option>4</option></select>
+      <label><input type="checkbox" id="guides" checked> 기준점·바닥선</label>
+      <label><input type="checkbox" id="slow"> 느리게(¼)</label>
+      <span class="state" id="state">idle 0</span>
+    </div>
+    <div class="stagewrap"><canvas id="stage" width="320" height="120" aria-label="캐릭터 조작 무대"></canvas></div>
+    <p class="keys"><b>← →</b> 달리기 · <b>J</b> 공격 · <b>E</b> 스킬(투사체) · <b>Q</b> 스킬(장판+폭발) · <b>H</b> 피격 · <b>K</b> 쓰러짐 · <b>R</b> 일으키기</p>
+    <div class="mobile">
+      <button data-k="ArrowLeft">◀</button><button data-k="ArrowRight">▶</button>
+      <button data-k="KeyJ">공격</button><button data-k="KeyE">스킬E</button><button data-k="KeyQ">스킬Q</button>
+      <button data-k="KeyH">피격</button><button data-k="KeyK">쓰러짐</button><button data-k="KeyR">일으키기</button>
+    </div>
+  </section>
+
+  <section aria-label="동작별 재생">
+    <div class="grid" id="grid"></div>
+  </section>
+  <section aria-label="스킬 이펙트">
+    <div class="fx" id="fx"></div>
+  </section>
+</main>
+<script>
+(async () => {
+  const E = window.EMBED || null;
+  const base = '.';
+  const meta = E ? E.meta : await fetch(base + '/silvermoon_sheet.json').then(r => r.json());
+  const load = s => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = s; });
+  const sheet = await load(E ? E.sheet : base + '/' + meta.image);
+  const fxImg = {};
+  for (const [k, e] of Object.entries(meta.effects)) fxImg[k] = await load(E ? E.fx[k] : base + '/' + e.file);
+  const [CW, CH] = meta.cell, A = meta.animations;
+  const $ = s => document.querySelector(s);
+  let K = 3;
+  const slow = () => $('#slow').checked ? .25 : 1;
+
+  // 동작별 칸
+  const cells = Object.entries(A).map(([name, a]) => {
+    const d = document.createElement('div'); d.className = 'cell';
+    const c = document.createElement('canvas'); c.width = CW; c.height = CH;
+    d.append(c);
+    const b = document.createElement('b'); b.textContent = ({ idle: '대기', run: '달리기', attack: '공격', skill: '스킬 시전', hit: '피격', down: '쓰러짐' })[name];
+    const s = document.createElement('span'); s.textContent = `${a.count}f · ${a.fps}fps · ${a.loop ? '반복' : a.holdLast ? '마지막 유지' : '1회'}${a.hitFrame != null ? ' · 판정 ' + a.hitFrame : ''}`;
+    d.append(b, s); $('#grid').append(d);
+    return { name, a, c, x: c.getContext('2d'), t: 0 };
+  });
+  for (const [k, e] of Object.entries(meta.effects)) {
+    const d = document.createElement('div'); d.className = 'cell';
+    const c = document.createElement('canvas'); c.width = e.size[0] * 2; c.height = e.size[1] * 2; c.style.width = e.size[0] * 2 + 'px';
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(fxImg[k], 0, 0, c.width, c.height);
+    const b = document.createElement('b'); b.textContent = e.label; const s = document.createElement('span'); s.textContent = `${e.size[0]}×${e.size[1]} · 별도 레이어`;
+    d.append(c, b, s); $('#fx').append(d);
+  }
+  function sizeCells() { for (const c of cells) { c.c.style.width = CW * Math.min(K, 2) + 'px'; c.c.style.height = CH * Math.min(K, 2) + 'px'; } }
+
+  // 조작 무대
+  const st = $('#stage'), sx = st.getContext('2d');
+  const W = 320, H = 120, GY = 104;
+  function resize() { K = +$('#scale').value; st.width = W * K; st.height = H * K; st.style.width = W * K / devicePixelRatio + 'px'; st.style.height = H * K / devicePixelRatio + 'px'; sizeCells(); }
+  $('#scale').addEventListener('change', resize); resize();
+  const P = { x: 120, face: 1, state: 'idle', t: 0, lock: 0, shots: [], fx: [] };
+  const held = {};
+  function act(k) {
+    if (P.state === 'down' && k !== 'KeyR') return;
+    if (k === 'KeyJ' && P.lock <= 0) set('attack', A.attack.count / A.attack.fps);
+    if (k === 'KeyE' && P.lock <= 0) { set('skill', A.skill.count / A.skill.fps); setTimeout(() => P.shots.push({ x: P.x + P.face * 18, y: GY - 34, v: P.face * 160, life: 1.4 }), 1000 * A.skill.castFrame / A.skill.fps / slow()); }
+    if (k === 'KeyQ' && P.lock <= 0) { set('skill', A.skill.count / A.skill.fps); P.fx.push({ k: 'field', x: P.x + P.face * 40, y: GY - 10, life: .9, max: .9 }); setTimeout(() => P.fx.push({ k: 'explosion', x: P.x + P.face * 40, y: GY - 28, life: .4, max: .4 }), 500 / slow()); }
+    if (k === 'KeyH') set('hit', A.hit.count / A.hit.fps);
+    if (k === 'KeyK') set('down', 99);
+    if (k === 'KeyR') { P.state = 'idle'; P.lock = 0; P.t = 0; }
+  }
+  function set(s, d) { P.state = s; P.t = 0; P.lock = d; }
+  addEventListener('keydown', e => { if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(e.code)) { held[e.code] = true; e.preventDefault(); } else if (!e.repeat) act(e.code); });
+  addEventListener('keyup', e => { held[e.code] = false; });
+  document.querySelectorAll('[data-k]').forEach(b => {
+    const k = b.dataset.k;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); if (k.startsWith('Arrow')) held[k] = true; else act(k); });
+    const up = () => { held[k] = false; }; b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up);
+  });
+  function frameOf(name, t) { const a = A[name]; let i = Math.floor(t * a.fps); i = a.loop ? i % a.count : Math.min(a.count - 1, i); return a.frames[i]; }
+  function drawFrame(c, fr, x, y, m, face) {
+    const ax = face < 0 ? CW - fr.anchor[0] : fr.anchor[0];
+    c.save(); c.translate(Math.round(x - ax * m) + (face < 0 ? CW * m : 0), Math.round(y - fr.anchor[1] * m)); if (face < 0) c.scale(-1, 1);
+    c.drawImage(sheet, fr.x, fr.y, CW, CH, 0, 0, CW * m, CH * m); c.restore();
+  }
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(.05, (now - last) / 1000) * slow(); last = now;
+    // 상태: 쓰러짐 > 피격 > 공격·스킬 > 이동
+    P.t += dt; P.lock -= dt;
+    const dir = (held.ArrowRight || held.KeyD ? 1 : 0) - (held.ArrowLeft || held.KeyA ? 1 : 0);
+    if (P.state !== 'down' && P.lock <= 0) { if (dir) { if (P.state !== 'run') { P.state = 'run'; P.t = 0; } P.face = dir; } else if (P.state !== 'idle') { P.state = 'idle'; P.t = 0; } }
+    if (P.state === 'run') P.x = Math.max(30, Math.min(W - 30, P.x + dir * 70 * dt));
+    for (const s of P.shots) { s.x += s.v * dt; s.life -= dt; } P.shots = P.shots.filter(s => s.life > 0 && s.x > -40 && s.x < W + 40);
+    for (const f of P.fx) f.life -= dt; P.fx = P.fx.filter(f => f.life > 0);
+    sx.setTransform(1, 0, 0, 1, 0, 0); sx.imageSmoothingEnabled = false;
+    sx.fillStyle = '#202842'; sx.fillRect(0, 0, st.width, st.height);
+    sx.fillStyle = '#2c3658'; sx.fillRect(0, GY * K, st.width, st.height);
+    for (const f of P.fx.filter(f => f.k === 'field')) { sx.globalAlpha = Math.min(1, f.life / f.max * 2); const i = fxImg.field; sx.drawImage(i, Math.round(f.x * K - i.width * K / 2), Math.round(f.y * K - i.height * K / 2), i.width * K, i.height * K); sx.globalAlpha = 1; }
+    const fr = frameOf(P.state, P.t);
+    drawFrame(sx, fr, P.x * K, GY * K, K, P.face);
+    for (const s of P.shots) { const i = fxImg.projectile; sx.save(); sx.translate(Math.round(s.x * K), Math.round(s.y * K)); if (s.v < 0) sx.scale(-1, 1); sx.drawImage(i, -i.width * K / 2, -i.height * K / 2, i.width * K, i.height * K); sx.restore(); }
+    for (const f of P.fx.filter(f => f.k === 'explosion')) { sx.globalAlpha = Math.min(1, f.life / f.max * 2); const i = fxImg.explosion; sx.drawImage(i, Math.round(f.x * K - i.width * K / 2), Math.round(f.y * K - i.height * K / 2), i.width * K, i.height * K); sx.globalAlpha = 1; }
+    if ($('#guides').checked) { sx.fillStyle = '#7dffb4'; sx.fillRect(0, GY * K, st.width, Math.max(1, K / 2)); sx.fillRect(Math.round(P.x * K) - 1, GY * K - 4 * K, 2, 6 * K); }
+    const a = A[P.state]; $('#state').textContent = `${P.state} ${a.frames.indexOf(fr)} / ${a.count}`;
+    for (const c of cells) {
+      c.t += dt; const a2 = c.a; let i = Math.floor(c.t * a2.fps); if (!a2.loop && i >= a2.count + (a2.holdLast ? a2.fps : 4)) { c.t = 0; i = 0; }
+      i = a2.loop ? i % a2.count : Math.min(a2.count - 1, i);
+      const f2 = a2.frames[i]; c.x.clearRect(0, 0, CW, CH); c.x.fillStyle = '#202842'; c.x.fillRect(0, 0, CW, CH);
+      c.x.drawImage(sheet, f2.x, f2.y, CW, CH, 0, 0, CW, CH);
+      if ($('#guides').checked) { c.x.fillStyle = 'rgba(125,255,180,.7)'; c.x.fillRect(0, 92, CW, 1); c.x.fillRect(f2.anchor[0], 88, 1, 6); }
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

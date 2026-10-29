@@ -1,6 +1,6 @@
 // 월하검무 — 게임 데이터 (영웅, 무기, 스킬, 적, 스테이지)
 export const VW = 320, VH = 180, GROUND = 152;
-export const VERSION = 'v0.4.0';
+export const VERSION = 'v0.5.0';
 
 export const RARITY = {
   3: { stars: '★★★', color: '#8fb8ff', name: '★3' },
@@ -63,10 +63,10 @@ export const SKILLS = {
 
 // pal: hair, coat, trim, acc(리본·장식), eye, style(long|short|pony|twin|bob)
 export const HEROES = [
-  { id: 'asbel', name: '아스벨', title: '월영의 검성', rarity: 6, weapon: 'sword', img: 'asbel', anchor: [25, 41],
+  { id: 'asbel', name: '아스벨', title: '은월의 마검사', rarity: 6, weapon: 'sword', sprite: { id: 'silvermoon', base: 'assets/heroes/silvermoon', file: 'silvermoon_sheet' }, quote: '내 검이 길을 연다.',
     e: 'crescent3', eName: '월영 삼일섬', q: 'phantom', qName: '환영 난무',
     pal: { hair: '#d9dcef', coat: '#2f3f9a', trim: '#c9b07a', acc: '#a77bff', eye: '#4a5cff', style: 'long' },
-    desc: '달이 가려진 밤에만 모습을 드러내는 검성. 보랏빛으로 빛나는 검은 그림자까지 벤다고 해요.' },
+    desc: '은빛 견갑과 남색 장포를 두른 마검사. 보랏빛 월영검은 그림자까지 벤다고 해요. "내 검이 길을 연다."' },
   { id: 'ria', name: '리아', title: '달빛 검사', rarity: 4, weapon: 'sword',
     e: 'wave', eName: '월광참', q: 'dashslash', qName: '그림자 베기',
     pal: { hair: '#e9edfb', coat: '#2e3f7d', trim: '#f3c75b', acc: '#5fdcff', eye: '#3cc8f2', style: 'long' },

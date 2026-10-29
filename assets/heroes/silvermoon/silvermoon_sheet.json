@@ -1,0 +1,393 @@
+{
+ "name": "은월의 마검사",
+ "id": "asbel",
+ "cell": [
+  64,
+  96
+ ],
+ "columns": 8,
+ "rows": 6,
+ "anchor": [
+  32,
+  92
+ ],
+ "image": "silvermoon_sheet.png",
+ "scale_note": "원본 대비 행별 배율 {\"idle\": 0.5, \"run\": 0.5, \"attack\": 0.4625, \"skill\": 0.45, \"hit\": 0.4625, \"down\": 0.4625}",
+ "animations": {
+  "idle": {
+   "row": 0,
+   "frames": [
+    {
+     "x": 0,
+     "y": 0,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/idle_0.png"
+    },
+    {
+     "x": 64,
+     "y": 0,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/idle_1.png"
+    },
+    {
+     "x": 128,
+     "y": 0,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/idle_2.png"
+    },
+    {
+     "x": 192,
+     "y": 0,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/idle_3.png"
+    },
+    {
+     "x": 256,
+     "y": 0,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/idle_4.png"
+    }
+   ],
+   "count": 5,
+   "fps": 8,
+   "frameMs": 125,
+   "loop": true,
+   "holdLast": false
+  },
+  "run": {
+   "row": 1,
+   "frames": [
+    {
+     "x": 0,
+     "y": 96,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/run_0.png"
+    },
+    {
+     "x": 64,
+     "y": 96,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/run_1.png"
+    },
+    {
+     "x": 128,
+     "y": 96,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/run_2.png"
+    },
+    {
+     "x": 192,
+     "y": 96,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/run_3.png"
+    },
+    {
+     "x": 256,
+     "y": 96,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/run_4.png"
+    },
+    {
+     "x": 320,
+     "y": 96,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/run_5.png"
+    },
+    {
+     "x": 384,
+     "y": 96,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/run_6.png"
+    },
+    {
+     "x": 448,
+     "y": 96,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/run_7.png"
+    }
+   ],
+   "count": 8,
+   "fps": 14,
+   "frameMs": 71,
+   "loop": true,
+   "holdLast": false
+  },
+  "attack": {
+   "row": 2,
+   "frames": [
+    {
+     "x": 0,
+     "y": 192,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      31,
+      92
+     ],
+     "file": "frames/attack_0.png"
+    },
+    {
+     "x": 64,
+     "y": 192,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/attack_1.png"
+    },
+    {
+     "x": 128,
+     "y": 192,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      30,
+      92
+     ],
+     "file": "frames/attack_2.png"
+    },
+    {
+     "x": 192,
+     "y": 192,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/attack_3.png"
+    }
+   ],
+   "count": 4,
+   "fps": 14,
+   "frameMs": 71,
+   "loop": false,
+   "holdLast": false,
+   "hitFrame": 1
+  },
+  "skill": {
+   "row": 3,
+   "frames": [
+    {
+     "x": 0,
+     "y": 288,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/skill_0.png"
+    },
+    {
+     "x": 64,
+     "y": 288,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/skill_1.png"
+    },
+    {
+     "x": 128,
+     "y": 288,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/skill_2.png"
+    }
+   ],
+   "count": 3,
+   "fps": 10,
+   "frameMs": 100,
+   "loop": false,
+   "holdLast": false,
+   "castFrame": 1
+  },
+  "hit": {
+   "row": 4,
+   "frames": [
+    {
+     "x": 0,
+     "y": 384,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/hit_0.png"
+    },
+    {
+     "x": 64,
+     "y": 384,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/hit_1.png"
+    }
+   ],
+   "count": 2,
+   "fps": 10,
+   "frameMs": 100,
+   "loop": false,
+   "holdLast": false
+  },
+  "down": {
+   "row": 5,
+   "frames": [
+    {
+     "x": 0,
+     "y": 480,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/down_0.png"
+    },
+    {
+     "x": 64,
+     "y": 480,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/down_1.png"
+    },
+    {
+     "x": 128,
+     "y": 480,
+     "w": 64,
+     "h": 96,
+     "anchor": [
+      32,
+      92
+     ],
+     "file": "frames/down_2.png"
+    }
+   ],
+   "count": 3,
+   "fps": 6,
+   "frameMs": 167,
+   "loop": false,
+   "holdLast": true
+  }
+ },
+ "effects": {
+  "projectile": {
+   "file": "effects/projectile.png",
+   "size": [
+    79,
+    26
+   ],
+   "label": "투사체",
+   "origin": [
+    39,
+    13
+   ]
+  },
+  "field": {
+   "file": "effects/field.png",
+   "size": [
+    84,
+    62
+   ],
+   "label": "장판",
+   "origin": [
+    42,
+    31
+   ]
+  },
+  "explosion": {
+   "file": "effects/explosion.png",
+   "size": [
+    78,
+    60
+   ],
+   "label": "폭발",
+   "origin": [
+    39,
+    30
+   ]
+  }
+ }
+}

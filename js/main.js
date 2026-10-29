@@ -7,6 +7,7 @@ import { Input, bindKeyboard, bindPad, consume, clearInput, applyPad, bindPadEdi
 import { initAudio, sfx, playBgm, setVolumes } from './audio.js';
 import { newSave, loadSave, writeSave, wipeSave, loadSettings, writeSettings } from './save.js';
 import * as UI from './ui.js';
+import { loadSprite } from './sprite.js';
 
 const $ = s => document.querySelector(s);
 const screen = $('#screen'), L = screen.getContext('2d'), hud = $('#hud'), Hc = hud.getContext('2d');
@@ -35,12 +36,13 @@ window.__wolha = G;
 
 /* ---------- 화면 크기 ---------- */
 function fit() {
-  const r = wrap.getBoundingClientRect();
-  let w = Math.min(r.width, r.height * 16 / 9); w = Math.max(200, Math.floor(w));
-  const h = Math.floor(w * 9 / 16);
+  // 기기 픽셀 기준 정수 배율 (320×180 → k배)
+  const r = wrap.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  let k = Math.floor(Math.min(r.width * dpr / VW, r.height * dpr / VH));
+  if (k < 1) k = Math.max(.5, Math.min(r.width * dpr / VW, r.height * dpr / VH));
+  const w = VW * k / dpr, h = VH * k / dpr;
   frame.style.width = w + 'px'; frame.style.height = h + 'px';
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
-  hud.width = Math.round(w * dpr); hud.height = Math.round(h * dpr);
+  hud.width = Math.round(VW * k); hud.height = Math.round(VH * k);
   sc = hud.width / VW;
 }
 new ResizeObserver(fit).observe(wrap); fit();
@@ -184,7 +186,7 @@ function loop(t) {
   requestAnimationFrame(loop);
 }
 const fontsReady = document.fonts ? Promise.race([Promise.all(['8px "Silkscreen"', '8px "Do Hyeon"', '8px "Gowun Dodum"'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 1500))]) : Promise.resolve();
-Promise.all([fontsReady.catch(() => {}), Art.loadImages(['asbel_44', 'asbel_72'])]).finally(() => {
+Promise.all([fontsReady.catch(() => {}), ...Object.values(HERO).filter(d => d.sprite).map(d => loadSprite(d.sprite.id, d.sprite.base, d.sprite.file))]).finally(() => {
   setVolumes(G.settings.bgm, G.settings.sfx);
   toTitle();
   requestAnimationFrame(loop);
